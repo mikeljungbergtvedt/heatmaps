@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heatmap Bergen</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        header {
+            background-color: #003087;
+            color: #FFFFFF;
+            padding: 20px;
+            text-align: center;
+        }
+        header img.logo {
+            max-width: 150px;
+            height: auto;
+        }
+        h1 {
+            margin: 10px 0;
+            font-size: 2em;
+            font-weight: 700;
+        }
+        .nav-bar {
+            max-width: 1200px;
+            margin: 10px auto;
+            text-align: center;
+        }
+        .nav-bar a {
+            display: inline-block;
+            color: #FFFFFF;
+            background-color: #00A4D6;
+            text-decoration: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            font-weight: 700;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+        .nav-bar a:hover {
+            background-color: #E30613;
+            transform: scale(1.05);
+        }
+        .nav-bar a.active {
+            background-color: #E30613;
+        }
+        .map-container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 8px;
+            height: 80vh;
+        }
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        footer {
+            background-color: #003087;
+            color: #FFFFFF;
+            text-align: center;
+            padding: 10px;
+            position: relative;
+            bottom: 0;
+            width: 100%;
+            font-size: 0.9em;
+        }
+        footer a {
+            color: #00A4D6;
+            text-decoration: none;
+        }
+        footer a:hover {
+            text-decoration: underline;
+        }
+        @media (max-width: 600px) {
+            .nav-bar a {
+                display: block;
+                margin: 5px auto;
+                width: 80%;
+            }
+            h1 {
+                font-size: 1.5em;
+            }
+            .map-container {
+                margin: 10px;
+                padding: 10px;
+                height: 70vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <img src="logo.png" alt="Autoringen Logo" class="logo">
+        <h1>Heatmap Bergen</h1>
+    </header>
+    <div class="nav-bar">
+        <a href="index.html">Norge</a>
+        <a href="ski.html">Ski</a>
+        <a href="skedsmo.html">Skedsmo</a>
+        <a href="trondheim.html">Trondheim</a>
+        <a href="bergen.html" class="active">Bergen</a>
+        <a href="stavanger.html">Stavanger</a>
+    </div>
+    <div class="map-container">
+        <div id="map"></div>
+    </div>
+    <footer>
+        <p>Powered by <a href="https://www.openstreetmap.org" target="_blank">OpenStreetMap</a> | <a href="https://www.autoringen.no" target="_blank">Autoringen</a></p>
+    </footer>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <script>
+        const map = L.map('map').setView([60.3913, 5.3221], 12); // Center on Bergen
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+
+        Papa.parse('bergen_sales_data.csv', {
+            download: true,
+            header: true,
+            complete: function(results) {
+                const points = results.data
+                    .filter(row => row.Latitude && row.Longitude && !isNaN(row.Latitude) && !isNaN(row.Longitude))
+                    .map(row => [parseFloat(row.Latitude), parseFloat(row.Longitude), 1]);
+                L.heatLayer(points, { radius: 25 }).addTo(map);
+            },
+            error: function(error) {
+                console.error('Error loading CSV:', error);
+            }
+        });
+    </script>
+</body>
+</html>
