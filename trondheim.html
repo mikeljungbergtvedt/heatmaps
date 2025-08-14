@@ -120,11 +120,10 @@
     <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     <script>
-        const map = L.map('map').setView([63.4305, 10.3951], 12); // Center on Trondheim
+        const map = L.map('map').setView([63.4305, 10.3951], 12); // Initial center on Trondheim
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         }).addTo(map);
-
         Papa.parse('trondheim_sales_data.csv', {
             download: true,
             header: true,
@@ -132,7 +131,13 @@
                 const points = results.data
                     .filter(row => row.Latitude && row.Longitude && !isNaN(row.Latitude) && !isNaN(row.Longitude))
                     .map(row => [parseFloat(row.Latitude), parseFloat(row.Longitude), 1]);
-                L.heatLayer(points, { radius: 25 }).addTo(map);
+                if (points.length > 0) {
+                    L.heatLayer(points, { radius: 25 }).addTo(map);
+                    const bounds = L.latLngBounds(points.map(point => [point[0], point[1]]));
+                    map.fitBounds(bounds, { padding: [50, 50] });
+                } else {
+                    console.warn('No valid coordinates found in CSV');
+                }
             },
             error: function(error) {
                 console.error('Error loading CSV:', error);
