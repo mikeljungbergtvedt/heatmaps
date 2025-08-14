@@ -10,7 +10,6 @@
         body {
             font-family: 'Roboto', sans-serif;
             margin: 0;
-            padding: 0;
             background-color: #f4f4f4;
             color: #333;
         }
@@ -26,7 +25,7 @@
         }
         h1 {
             margin: 10px 0;
-            font-size: 2.5em;
+            font-size: 2em;
             font-weight: 700;
         }
         .nav-bar {
@@ -88,7 +87,7 @@
                 width: 80%;
             }
             h1 {
-                font-size: 1.8em;
+                font-size: 1.5em;
             }
             .map-container {
                 margin: 10px;
@@ -121,19 +120,17 @@
     <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     <script>
-        const map = L.map('map').setView([60.4720, 8.4689], 5); // Initial center of Norway
+        const map = L.map('map').setView([60.4720, 8.4689], 5); // Initial center on Norway
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         }).addTo(map);
-
-        Papa.parse('../Python/norge_sales_data.csv', {
+        Papa.parse('norge_sales_data.csv', {
             download: true,
             header: true,
             complete: function(results) {
                 const points = results.data
                     .filter(row => row.Latitude && row.Longitude && !isNaN(row.Latitude) && !isNaN(row.Longitude))
                     .map(row => [parseFloat(row.Latitude), parseFloat(row.Longitude), 1]);
-
                 if (points.length > 0) {
                     L.heatLayer(points, { radius: 25 }).addTo(map);
                     const bounds = L.latLngBounds(points.map(point => [point[0], point[1]]));
