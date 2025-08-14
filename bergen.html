@@ -124,15 +124,13 @@
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         }).addTo(map);
-
-        Papa.parse('../Python/bergen_sales_data.csv', {
+        Papa.parse('bergen_sales_data.csv', {
             download: true,
             header: true,
             complete: function(results) {
                 const points = results.data
                     .filter(row => row.Latitude && row.Longitude && !isNaN(row.Latitude) && !isNaN(row.Longitude))
                     .map(row => [parseFloat(row.Latitude), parseFloat(row.Longitude), 1]);
-
                 if (points.length > 0) {
                     L.heatLayer(points, { radius: 25 }).addTo(map);
                     const bounds = L.latLngBounds(points.map(point => [point[0], point[1]]));
