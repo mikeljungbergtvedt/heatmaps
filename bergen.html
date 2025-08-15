@@ -129,8 +129,21 @@
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     <script>
         const correctPassword = "iloveautoringen";
-        let password = prompt("Enter password to access the map:");
-        if (password === correctPassword) {
+        const authTimestamp = sessionStorage.getItem('authTimestamp');
+        const timeoutDuration = 600000; // 10 minutes in milliseconds
+        let isAuthenticated = false;
+
+        if (authTimestamp && (Date.now() - parseInt(authTimestamp)) < timeoutDuration) {
+            isAuthenticated = true;
+        } else {
+            let password = prompt("Enter password to access the map:");
+            if (password === correctPassword) {
+                isAuthenticated = true;
+                sessionStorage.setItem('authTimestamp', Date.now());
+            }
+        }
+
+        if (isAuthenticated) {
             const map = L.map('map').setView([60.3913, 5.3221], 12); // Initial center on Bergen
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
