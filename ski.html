@@ -63,6 +63,13 @@
             width: 100%;
             height: 100%;
         }
+        #error-message {
+            display: none;
+            text-align: center;
+            color: red;
+            font-size: 1.5em;
+            margin: 20px auto;
+        }
         footer {
             background-color: #003087;
             color: #FFFFFF;
@@ -113,6 +120,7 @@
     <div class="map-container">
         <div id="map"></div>
     </div>
+    <div id="error-message">Incorrect password. Access denied.</div>
     <footer>
         <p>Powered by <a href="https://www.openstreetmap.org" target="_blank">OpenStreetMap</a> | <a href="https://www.autoringen.no" target="_blank">Autoringen</a></p>
     </footer>
@@ -120,36 +128,86 @@
     <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     <script>
-        const map = L.map('map').setView([59.7167, 10.8333], 12); // Initial center on Ski
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        }).addTo(map);
+        const correctPassword = "iloveautoringen";
+        let password = prompt("Enter password to access the map:");
+        if (password === correctPassword) {
+            const map = L.map('map').setView([59.7167, 10.8333], 12); // Initial center on Ski
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            }).addTo(map);
 
-        Papa.parse('ski_sales_data.csv', {
-            download: true,
-            header: true,
-            complete: function(results) {
-                // Filter valid coordinates and store them
-                const points = results.data
-                    .filter(row => row.Latitude && row.Longitude && !isNaN(row.Latitude) && !isNaN(row.Longitude))
-                    .map(row => [parseFloat(row.Latitude), parseFloat(row.Longitude), 1]);
+            Papa.parse('ski_sales_data.csv', {
+                download: true,
+                header: true,
+                complete: function(results) {
+                    // Group data by postal code and buyer
+                    const pointsByPostnr = {};
+                    results.data
+                        .filter(row => (row.Latitude || row.latitude) && (row.Longitude || row.longitude) && 
+                                       !isNaN(parseFloat(row.Latitude || row.latitude)) && 
+                                       !isNaN(parseFloat(row.Longitude || row.longitude)))
+                        .forEach(row => {
+                            const postnr = row.cleaned_postal_code || row.Postnr || 'Unknown';
+                            const lat = parseFloat(row.Latitude || row.latitude);
+                            const lng = parseFloat(row.Longitude || row.longitude);
+                            const buyer = row.Kjøper || 'Unknown Buyer';
+                            if (!pointsByPostnr[postnr]) {
+                                pointsByPostnr[postnr] = { lat, lng, buyers: {}, count: 0 };
+                            }
+                            pointsByPostnr[postnr].buyers[buyer] = (pointsByPostnr[postnr].buyers[buyer] || 0) + 1;
+                            pointsByPostnr[postnr].count += 1;
+                        });
 
-                // Add heatmap layer
-                if (points.length > 0) {
-                    L.heatLayer(points, { radius: 25 }).addTo(map);
+                    // Create heatmap points
+                    const heatmapPoints = Object.values(pointsByPostnr).map(p => [p.lat, p.lng, p.count]);
 
-                    // Create bounds from the points
-                    const bounds = L.latLngBounds(points.map(point => [point[0], point[1]]));
-                    // Fit map to bounds with padding
-                    map.fitBounds(bounds, { padding: [50, 50] });
-                } else {
-                    console.warn('No valid coordinates found in CSV');
+                    // Create heatmap layer
+                    const heatLayer = L.heatLayer(heatmapPoints, { radius: 25 });
+
+                    // Create marker layer
+                    const markerLayer = L.layerGroup();
+                    Object.entries(pointsByPostnr).forEach(([postnr, data]) => {
+                        const buyerList = Object.entries(data.buyers)
+                            .map(([buyer, count]) => `${buyer} (${count} car${count > 1 ? 's' : ''})`)
+                            .join('<br>');
+                        const popupContent = `
+                            <b>Postal Code:</b> ${postnr}<br>
+                            <b>Total Cars Sold:</b> ${data.count}<br>
+                            <b>Buyers:</b><br>${buyerList}
+                        `;
+                        L.marker([data.lat, data.lng])
+                            .bindPopup(popupContent)
+                            .addTo(markerLayer);
+                    });
+
+                    // Add layers to map
+                    heatLayer.addTo(map);
+                    markerLayer.addTo(map);
+
+                    // Layer control
+                    const baseLayers = {};
+                    const overlayLayers = {
+                        "Heatmap": heatLayer,
+                        "Markers": markerLayer
+                    };
+                    L.control.layers(baseLayers, overlayLayers).addTo(map);
+
+                    // Auto-zoom to bounds
+                    if (heatmapPoints.length > 0) {
+                        const bounds = L.latLngBounds(heatmapPoints.map(p => [p[0], p[1]]));
+                        map.fitBounds(bounds, { padding: [50, 50] });
+                    } else {
+                        console.warn('No valid coordinates found in CSV. Check file path or column names (Latitude/Longitude or latitude/longitude). Data:', results.data);
+                    }
+                },
+                error: function(error) {
+                    console.error('Error loading CSV: Check if ski_sales_data.csv exists and is accessible:', error);
                 }
-            },
-            error: function(error) {
-                console.error('Error loading CSV:', error);
-            }
-        });
+            });
+        } else {
+            document.getElementById('map').style.display = 'none';
+            document.getElementById('error-message').style.display = 'block';
+        }
     </script>
 </body>
 </html>
