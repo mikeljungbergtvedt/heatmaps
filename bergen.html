@@ -103,6 +103,17 @@
                 height: 70vh;
             }
         }
+        /* Custom styles for colored pins with numbers */
+        .marker-cluster {
+            background: #fff;
+            border-radius: 50%;
+            text-align: center;
+            font-weight: bold;
+            font-size: 14px;
+            line-height: 30px;
+            width: 30px;
+            height: 30px;
+        }
     </style>
 </head>
 <body>
@@ -178,9 +189,21 @@
                     // Create heatmap layer
                     const heatLayer = L.heatLayer(heatmapPoints, { radius: 25 });
 
-                    // Create marker layer
+                    // Create marker layer with colored pins and numbers
                     const markerLayer = L.layerGroup();
                     Object.entries(pointsByPostnr).forEach(([postnr, data]) => {
+                        // Determine color based on volume
+                        let color = '#00FF00'; // Green (low volume)
+                        if (data.count > 5) color = '#FFFF00'; // Yellow (medium volume)
+                        if (data.count > 10) color = '#FF0000'; // Red (high volume)
+
+                        // Create custom icon with number
+                        const icon = L.divIcon({
+                            className: 'marker-cluster',
+                            html: `<div style="background-color: ${color};">${data.count}</div>`
+                        });
+
+                        // Optional popup with detailed buyer info
                         const buyerList = Object.entries(data.buyers)
                             .map(([buyer, count]) => `${buyer} (${count} car${count > 1 ? 's' : ''})`)
                             .join('<br>');
@@ -189,7 +212,8 @@
                             <b>Total Cars Sold:</b> ${data.count}<br>
                             <b>Buyers:</b><br>${buyerList}
                         `;
-                        L.marker([data.lat, data.lng])
+
+                        L.marker([data.lat, data.lng], { icon: icon })
                             .bindPopup(popupContent)
                             .addTo(markerLayer);
                     });
