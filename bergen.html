@@ -6,6 +6,8 @@
     <title>Heatmap Bergen</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
     <style>
         body {
             font-family: 'Roboto', sans-serif;
@@ -103,22 +105,19 @@
                 height: 70vh;
             }
         }
-        /* Custom styles for round, larger markers with numbers */
         .marker-cluster {
-            background: #fff;
-            border-radius: 50%; /* Makes it round */
-            text-align: center;
-            font-weight: bold;
-            font-size: 16px; /* Larger font for readability */
-            line-height: 40px; /* Matches height for vertical centering */
-            width: 40px; /* Larger size to prevent overflow */
-            height: 40px; /* Larger size to prevent overflow */
-            border: 2px solid #000; /* Optional border for visibility */
+            background: transparent !important;
+            border-radius: 50%;
         }
         .marker-cluster div {
-            color: #fff; /* White text for contrast */
-            margin: 0;
-            padding: 0;
+            width: 40px;
+            height: 40px;
+            line-height: 40px;
+            border-radius: 50%;
+            font-size: 16px;
+            font-weight: bold;
+            color: #000;
+            text-align: center;
         }
     </style>
 </head>
@@ -145,6 +144,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script>
         const correctPassword = "iloveautoringen";
         const authTimestamp = sessionStorage.getItem('authTimestamp');
@@ -195,21 +195,35 @@
                     // Create heatmap layer
                     const heatLayer = L.heatLayer(heatmapPoints, { radius: 25 });
 
-                    // Create marker layer with round, larger colored pins and numbers
-                    const markerLayer = L.layerGroup();
+                    // Create cluster group for grouping pins within ~20km
+                    const markerLayer = L.markerClusterGroup({
+                        maxClusterRadius: 50, // Approximate 20km at zoom level 12; adjust as needed
+                        iconCreateFunction: function(cluster) {
+                            const childCount = cluster.getChildCount();
+                            // Gradient from red to green (weather forecast style)
+                            let r = 255, g = 0, b = 0; // Start with red
+                            if (childCount <= 5) {
+                                g = Math.round(255 * (childCount / 5)); // Gradually increase green
+                                r = Math.round(255 * (1 - childCount / 5)); // Decrease red
+                            } else if (childCount <= 10) {
+                                g = 255; // Full green
+                                r = Math.round(255 * ((10 - childCount) / 5)); // Fade red to yellow
+                                b = 0;
+                            } else {
+                                g = 255; // Stay green
+                                b = Math.round(255 * ((childCount - 10) / 20)); // Add blue for higher counts
+                            }
+                            const color = `rgb(${r}, ${g}, ${b})`;
+                            return L.divIcon({
+                                html: `<div style="background-color: ${color}; color: #000; font-weight: bold; font-size: 16px; line-height: 40px; width: 40px; height: 40px; border-radius: 50%; text-align: center;">${childCount}</div>`,
+                                className: 'marker-cluster',
+                                iconSize: [40, 40]
+                            });
+                        }
+                    });
+
+                    // Add individual markers to the cluster group
                     Object.entries(pointsByPostnr).forEach(([postnr, data]) => {
-                        // Determine color based on volume
-                        let color = '#00FF00'; // Green (low volume: 0-5)
-                        if (data.count > 5) color = '#FFFF00'; // Yellow (medium volume: 6-10)
-                        if (data.count > 10) color = '#FF0000'; // Red (high volume: 11+)
-
-                        // Create custom icon with number
-                        const icon = L.divIcon({
-                            className: 'marker-cluster',
-                            html: `<div style="background-color: ${color};">${data.count}</div>`
-                        });
-
-                        // Optional popup with detailed buyer info
                         const buyerList = Object.entries(data.buyers)
                             .map(([buyer, count]) => `${buyer} (${count} car${count > 1 ? 's' : ''})`)
                             .join('<br>');
@@ -218,8 +232,7 @@
                             <b>Total Cars Sold:</b> ${data.count}<br>
                             <b>Buyers:</b><br>${buyerList}
                         `;
-
-                        L.marker([data.lat, data.lng], { icon: icon })
+                        L.marker([data.lat, data.lng])
                             .bindPopup(popupContent)
                             .addTo(markerLayer);
                     });
