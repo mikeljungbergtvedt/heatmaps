@@ -106,8 +106,7 @@
             }
         }
         .marker-cluster {
-            background: transparent !important;
-            border-radius: 50%;
+            border-radius: 50%; /* Round shape */
         }
         .marker-cluster div {
             width: 40px;
@@ -116,7 +115,7 @@
             border-radius: 50%;
             font-size: 16px;
             font-weight: bold;
-            color: #000;
+            color: #000; /* Black numbers */
             text-align: center;
         }
     </style>
@@ -189,6 +188,9 @@
                             pointsByPostnr[postnr].count += 1;
                         });
 
+                    // Find max count for normalization
+                    const maxCount = Math.max(...Object.values(pointsByPostnr).map(p => p.count));
+
                     // Create heatmap points
                     const heatmapPoints = Object.values(pointsByPostnr).map(p => [p.lat, p.lng, p.count]);
 
@@ -200,20 +202,12 @@
                         maxClusterRadius: 50, // Approximate 20km at zoom level 12; adjust as needed
                         iconCreateFunction: function(cluster) {
                             const childCount = cluster.getChildCount();
-                            // Gradient from red to green (weather forecast style)
-                            let r = 255, g = 0, b = 0; // Start with red
-                            if (childCount <= 5) {
-                                g = Math.round(255 * (childCount / 5)); // Gradually increase green
-                                r = Math.round(255 * (1 - childCount / 5)); // Decrease red
-                            } else if (childCount <= 10) {
-                                g = 255; // Full green
-                                r = Math.round(255 * ((10 - childCount) / 5)); // Fade red to yellow
-                                b = 0;
-                            } else {
-                                g = 255; // Stay green
-                                b = Math.round(255 * ((childCount - 10) / 20)); // Add blue for higher counts
-                            }
-                            const color = `rgb(${r}, ${g}, ${b})`;
+                            // Gradient from blue to orange via green and yellow
+                            const ratio = maxCount > 0 ? childCount / maxCount : 0;
+                            let r = 255 * ratio; // Increase red for orange
+                            let g = 255 * (1 - Math.abs(ratio - 0.5) / 0.5); // Peak green at 0.5, fade to yellow/orange
+                            let b = 255 * (1 - ratio); // Decrease blue from blue to orange
+                            const color = `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
                             return L.divIcon({
                                 html: `<div style="background-color: ${color}; color: #000; font-weight: bold; font-size: 16px; line-height: 40px; width: 40px; height: 40px; border-radius: 50%; text-align: center;">${childCount}</div>`,
                                 className: 'marker-cluster',
@@ -224,6 +218,13 @@
 
                     // Add individual markers to the cluster group
                     Object.entries(pointsByPostnr).forEach(([postnr, data]) => {
+                        // Gradient for individual markers
+                        const ratio = maxCount > 0 ? data.count / maxCount : 0;
+                        let r = 255 * ratio; // Increase red for orange
+                        let g = 255 * (1 - Math.abs(ratio - 0.5) / 0.5); // Peak green at 0.5
+                        let b = 255 * (1 - ratio); // Decrease blue
+                        const color = `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
+
                         const buyerList = Object.entries(data.buyers)
                             .map(([buyer, count]) => `${buyer} (${count} car${count > 1 ? 's' : ''})`)
                             .join('<br>');
@@ -232,9 +233,15 @@
                             <b>Total Cars Sold:</b> ${data.count}<br>
                             <b>Buyers:</b><br>${buyerList}
                         `;
-                        L.marker([data.lat, data.lng])
-                            .bindPopup(popupContent)
-                            .addTo(markerLayer);
+                        L.marker([data.lat, data.lng], {
+                            icon: L.divIcon({
+                                html: `<div style="background-color: ${color}; color: #000; font-weight: bold; font-size: 16px; line-height: 40px; width: 40px; height: 40px; border-radius: 50%; text-align: center;">${data.count}</div>`,
+                                className: 'marker-cluster',
+                                iconSize: [40, 40]
+                            })
+                        })
+                        .bindPopup(popupContent)
+                        .addTo(markerLayer);
                     });
 
                     // Add layers to map
