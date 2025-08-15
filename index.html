@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -131,7 +130,7 @@
             download: true,
             header: true,
             complete: function(results) {
-                // Group data by postal code to count cars sold and collect buyers
+                // Group data by postal code and buyer
                 const pointsByPostnr = {};
                 results.data
                     .filter(row => (row.Latitude || row.latitude) && (row.Longitude || row.longitude) && 
@@ -143,9 +142,9 @@
                         const lng = parseFloat(row.Longitude || row.longitude);
                         const buyer = row.Kjøper || 'Unknown Buyer';
                         if (!pointsByPostnr[postnr]) {
-                            pointsByPostnr[postnr] = { lat, lng, buyers: [], count: 0 };
+                            pointsByPostnr[postnr] = { lat, lng, buyers: {}, count: 0 };
                         }
-                        pointsByPostnr[postnr].buyers.push(buyer);
+                        pointsByPostnr[postnr].buyers[buyer] = (pointsByPostnr[postnr].buyers[buyer] || 0) + 1;
                         pointsByPostnr[postnr].count += 1;
                     });
 
@@ -158,10 +157,13 @@
                 // Create marker layer
                 const markerLayer = L.layerGroup();
                 Object.entries(pointsByPostnr).forEach(([postnr, data]) => {
+                    const buyerList = Object.entries(data.buyers)
+                        .map(([buyer, count]) => `${buyer} (${count} car${count > 1 ? 's' : ''})`)
+                        .join('<br>');
                     const popupContent = `
                         <b>Postal Code:</b> ${postnr}<br>
-                        <b>Cars Sold:</b> ${data.count}<br>
-                        <b>Buyers:</b><br>${data.buyers.join('<br>')}
+                        <b>Total Cars Sold:</b> ${data.count}<br>
+                        <b>Buyers:</b><br>${buyerList}
                     `;
                     L.marker([data.lat, data.lng])
                         .bindPopup(popupContent)
