@@ -103,16 +103,22 @@
                 height: 70vh;
             }
         }
-        /* Custom styles for colored pins with numbers */
+        /* Custom styles for round, larger markers with numbers */
         .marker-cluster {
             background: #fff;
-            border-radius: 50%;
+            border-radius: 50%; /* Makes it round */
             text-align: center;
             font-weight: bold;
-            font-size: 14px;
-            line-height: 30px;
-            width: 30px;
-            height: 30px;
+            font-size: 16px; /* Larger font for readability */
+            line-height: 40px; /* Matches height for vertical centering */
+            width: 40px; /* Larger size to prevent overflow */
+            height: 40px; /* Larger size to prevent overflow */
+            border: 2px solid #000; /* Optional border for visibility */
+        }
+        .marker-cluster div {
+            color: #fff; /* White text for contrast */
+            margin: 0;
+            padding: 0;
         }
     </style>
 </head>
@@ -189,13 +195,13 @@
                     // Create heatmap layer
                     const heatLayer = L.heatLayer(heatmapPoints, { radius: 25 });
 
-                    // Create marker layer with colored pins and numbers
+                    // Create marker layer with round, larger colored pins and numbers
                     const markerLayer = L.layerGroup();
                     Object.entries(pointsByPostnr).forEach(([postnr, data]) => {
                         // Determine color based on volume
-                        let color = '#00FF00'; // Green (low volume)
-                        if (data.count > 5) color = '#FFFF00'; // Yellow (medium volume)
-                        if (data.count > 10) color = '#FF0000'; // Red (high volume)
+                        let color = '#00FF00'; // Green (low volume: 0-5)
+                        if (data.count > 5) color = '#FFFF00'; // Yellow (medium volume: 6-10)
+                        if (data.count > 10) color = '#FF0000'; // Red (high volume: 11+)
 
                         // Create custom icon with number
                         const icon = L.divIcon({
