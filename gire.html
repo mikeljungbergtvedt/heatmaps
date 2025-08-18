@@ -39,36 +39,15 @@
         .controls button {
             padding: 10px 20px;
             margin: 5px;
-            background-color: #00A4D6;
-            color: #FFFFFF;
             border: none;
             border-radius: 5px;
             cursor: pointer;
             font-weight: 700;
             transition: background-color 0.3s;
+            color: #FFFFFF;
         }
         .controls button:hover {
-            background-color: #E30613;
-        }
-        .color-table {
-            max-width: 1200px;
-            margin: 10px auto;
-            padding: 10px;
-            background-color: rgba(255, 255, 255, 0.8);
-            border-radius: 8px;
-        }
-        .color-table table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .color-table th, .color-table td {
-            padding: 8px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-        }
-        .color-table th {
-            background-color: #003087;
-            color: #FFFFFF;
+            opacity: 0.8;
         }
         .map-container {
             max-width: 1200px;
@@ -122,24 +101,13 @@
         <h1>Gire soner</h1>
     </header>
     <div class="controls">
-        <button onclick="toggleMarkers('all')">Show All</button>
-        <button onclick="toggleMarkers('Oslo')">Oslo</button>
-        <button onclick="toggleMarkers('Bergen')">Bergen</button>
-        <button onclick="toggleMarkers('Stavanger')">Stavanger</button>
-        <button onclick="toggleMarkers('Trondheim')">Trondheim</button>
-        <button onclick="toggleMarkers('Ski')">Ski</button>
-        <button onclick="toggleMarkers('Drammen')">Drammen</button>
-    </div>
-    <div class="color-table">
-        <table>
-            <thead>
-                <tr>
-                    <th>Location</th>
-                    <th>Color</th>
-                </tr>
-            </thead>
-            <tbody id="colorTableBody"></tbody>
-        </table>
+        <button onclick="toggleMarkers('all')" style="background-color: #808080;">Show All</button>
+        <button onclick="toggleMarkers('Oslo')" style="background-color: #1d4877;">Oslo</button>
+        <button onclick="toggleMarkers('Bergen')" style="background-color: #1b8a5a;">Bergen</button>
+        <button onclick="toggleMarkers('Stavanger')" style="background-color: #fbb021;">Stavanger</button>
+        <button onclick="toggleMarkers('Trondheim')" style="background-color: #f68838;">Trondheim</button>
+        <button onclick="toggleMarkers('Ski')" style="background-color: #ee3e32;">Ski</button>
+        <button onclick="toggleMarkers('Drammen')" style="background-color: #6a1b9a;">Drammen</button>
     </div>
     <div class="map-container">
         <div id="map"></div>
@@ -163,10 +131,11 @@
             'Stavanger': '#fbb021',   // Yellow/Orange
             'Trondheim': '#f68838',   // Orange
             'Ski': '#ee3e32',         // Red
-            'Drammen': '#6a1b9a'      // Purple (additional color)
+            'Drammen': '#6a1b9a'      // Purple
         };
 
         let markers = {};
+        let allMarkers = [];
 
         Papa.parse('delivery_zones_geocoded.csv', {
             download: true,
@@ -198,17 +167,21 @@
                             <b>Postal Code:</b> ${postnr}<br>
                             <b>Price (NOK):</b> ${Math.round(price)}<br>
                             <b>Location:</b> ${sted}
-                        `).addTo(map);
+                        `);
 
                         markers[sted].push(marker);
+                        allMarkers.push(marker); // Track all markers for auto-zoom
                     });
 
-                // Populate color table
-                const tableBody = document.getElementById('colorTableBody');
-                for (const [location, color] of Object.entries(locationColors)) {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `<td>${location}</td><td style="background-color: ${color}; width: 20px;"></td>`;
-                    tableBody.appendChild(row);
+                // Add all markers initially
+                allMarkers.forEach(marker => marker.addTo(map));
+
+                // Auto-zoom to fit all markers
+                if (allMarkers.length > 0) {
+                    const group = new L.featureGroup(allMarkers);
+                    map.fitBounds(group.getBounds(), { padding: [50, 50] });
+                } else {
+                    console.warn('No valid markers to display.');
                 }
 
                 // Initial state: Show all
@@ -220,18 +193,21 @@
         });
 
         function toggleMarkers(location) {
-            // Hide all markers
-            for (const loc in markers) {
-                markers[loc].forEach(marker => map.removeLayer(marker));
-            }
+            // Remove all markers
+            allMarkers.forEach(marker => map.removeLayer(marker));
 
             // Show selected location or all
             if (location === 'all') {
-                for (const loc in markers) {
-                    markers[loc].forEach(marker => map.addLayer(marker));
-                }
+                allMarkers.forEach(marker => map.addLayer(marker));
             } else if (markers[location]) {
                 markers[location].forEach(marker => map.addLayer(marker));
+            }
+
+            // Re-apply auto-zoom for the visible markers
+            const visibleMarkers = location === 'all' ? allMarkers : markers[location] || [];
+            if (visibleMarkers.length > 0) {
+                const group = new L.featureGroup(visibleMarkers);
+                map.fitBounds(group.getBounds(), { padding: [50, 50] });
             }
         }
     </script>
