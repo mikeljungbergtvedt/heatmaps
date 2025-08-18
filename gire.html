@@ -127,7 +127,10 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
     <script>
-        const map = L.map('map'); // No initial setView, will auto-zoom
+        const map = L.map('map', {
+            minZoom: 5, // Prevent zooming out too far
+            maxZoom: 18 // Prevent zooming in too close
+        }); // Initialize with zoom limits
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         }).addTo(map);
@@ -165,6 +168,7 @@
                         !isNaN(parseFloat(row.Longitude)) &&
                         (sted === 'all' || row.Sted === sted)
                     );
+                    console.log(`Loaded ${data.length} valid locations for ${sted}`);
                     // Group locations by identical coordinates
                     const coordGroups = {};
                     data.forEach(location => {
@@ -176,6 +180,7 @@
                         }
                         coordGroups[coordKey].push(location);
                     });
+                    console.log(`Created ${Object.keys(coordGroups).length} coordinate groups`);
                     // Create one marker per coordinate group
                     Object.entries(coordGroups).forEach(([coordKey, locations]) => {
                         const [lat, lng] = coordKey.split(',').map(parseFloat);
@@ -231,14 +236,29 @@
                     }
                     // Auto-zoom to bounds of displayed markers
                     if (data.length > 0) {
-                        const bounds = L.latLngBounds(data.map(row => [parseFloat(row.Latitude), parseFloat(row.Longitude)]));
-                        map.fitBounds(bounds, { padding: [50, 50] });
+                        const bounds = L.latLngBounds(data.map(row => {
+                            const lat = parseFloat(row.Latitude);
+                            const lng = parseFloat(row.Longitude);
+                            if (!isNaN(lat) && !isNaN(lng)) {
+                                return [lat, lng];
+                            }
+                            return null;
+                        }).filter(coord => coord !== null));
+                        if (bounds.isValid()) {
+                            console.log('Zooming to bounds:', bounds.toBBoxString());
+                            map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+                        } else {
+                            console.warn('Invalid bounds, setting default view');
+                            map.setView([64.0, 10.0], 5); // Default to Norway center
+                        }
                     } else {
-                        console.warn('No valid coordinates found for selected layer. Check CSV data or Sted value.');
+                        console.warn('No valid coordinates found for selected layer. Setting default view.');
+                        map.setView([64.0, 10.0], 5); // Default to Norway center
                     }
                 },
                 error: function(error) {
                     console.error('Error loading CSV: Check if delivery_zones_geocoded.csv exists and is accessible:', error);
+                    map.setView([64.0, 10.0], 5); // Default to Norway center
                 }
             });
         }
