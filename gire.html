@@ -1,215 +1,73 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="nb-NO">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gire soner</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <title>Delivery Zones Map</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
     <style>
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
         body {
-            font-family: 'Roboto', sans-serif;
             margin: 0;
             padding: 0;
-            background-color: #f4f4f4;
-            color: #333;
-        }
-        header {
-            background-color: #003087;
-            color: #FFFFFF;
-            padding: 20px;
-            text-align: center;
-        }
-        header img.logo {
-            max-width: 150px;
-            height: auto;
-        }
-        h1 {
-            margin: 10px 0;
-            font-size: 2.5em;
-            font-weight: 700;
-        }
-        .controls {
-            max-width: 1200px;
-            margin: 10px auto;
-            padding: 10px;
-            text-align: center;
-        }
-        .controls button {
-            padding: 10px 20px;
-            margin: 5px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: 700;
-            transition: background-color 0.3s;
-            color: #FFFFFF;
-        }
-        .controls button:hover {
-            opacity: 0.8;
-        }
-        .map-container {
-            max-width: 1200px;
-            margin: 20px auto;
-            padding: 20px;
-            background-color: rgba(255, 255, 255, 0.8);
-            border-radius: 8px;
-            height: 80vh;
-        }
-        #map {
-            width: 100%;
-            height: 100%;
-        }
-        footer {
-            background-color: #003087;
-            color: #FFFFFF;
-            text-align: center;
-            padding: 10px;
-            position: relative;
-            bottom: 0;
-            width: 100%;
-            font-size: 0.9em;
-        }
-        footer a {
-            color: #00A4D6;
-            text-decoration: none;
-        }
-        footer a:hover {
-            text-decoration: underline;
-        }
-        @media (max-width: 600px) {
-            h1 {
-                font-size: 1.8em;
-            }
-            .map-container {
-                margin: 10px;
-                padding: 10px;
-                height: 70vh;
-            }
-            .controls button {
-                width: 80%;
-                margin: 5px auto;
-                display: block;
-            }
+            font-family: Arial, sans-serif;
         }
     </style>
 </head>
 <body>
-    <header>
-        <img src="logo.png" alt="Autoringen Logo" class="logo">
-        <h1>Gire soner</h1>
-    </header>
-    <div class="controls">
-        <button onclick="toggleMarkers('all')" style="background-color: #808080;">Show All</button>
-        <button onclick="toggleMarkers('Oslo')" style="background-color: #1d4877;">Oslo</button>
-        <button onclick="toggleMarkers('Bergen')" style="background-color: #1b8a5a;">Bergen</button>
-        <button onclick="toggleMarkers('Stavanger')" style="background-color: #fbb021;">Stavanger</button>
-        <button onclick="toggleMarkers('Trondheim')" style="background-color: #f68838;">Trondheim</button>
-        <button onclick="toggleMarkers('Ski')" style="background-color: #ee3e32;">Ski</button>
-        <button onclick="toggleMarkers('Drammen')" style="background-color: #6a1b9a;">Drammen</button>
-    </div>
-    <div class="map-container">
-        <div id="map"></div>
-    </div>
-    <footer>
-        <p>Powered by <a href="https://www.openstreetmap.org" target="_blank">OpenStreetMap</a> | <a href="https://www.autoringen.no" target="_blank">Autoringen</a></p>
-    </footer>
+    <div id="map"></div>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
-    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     <script>
-        const map = L.map('map').setView([59.9139, 10.7522], 6); // Initial center on Norway
+        // Initialize map
+        const map = L.map('map').setView([64.0, 10.0], 6); // Center of Norway, zoom 6
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         }).addTo(map);
 
-        // Define colors for each location
-        const locationColors = {
-            'Oslo': '#1d4877',        // Dark Blue
-            'Bergen': '#1b8a5a',      // Teal/Green
-            'Stavanger': '#fbb021',   // Yellow/Orange
-            'Trondheim': '#f68838',   // Orange
-            'Ski': '#ee3e32',         // Red
-            'Drammen': '#6a1b9a'      // Purple
+        // Color mapping based on Sted
+        const colorMap = {
+            'Skedsmo': '#FF0000', // Red
+            'Ski': '#00FF00',    // Green
+            'Bergen': '#0000FF', // Blue
+            'Trondheim': '#FFA500', // Orange
+            'Stavanger': '#800080' // Purple
         };
 
-        let markers = {};
-        let allMarkers = [];
+        // Load geocoded CSV
+        fetch('delivery_zones_geocoded.csv')
+            .then(response => response.text())
+            .then(csvText => {
+                const lines = csvText.split('\n');
+                const headers = lines[0].split(',');
+                const data = lines.slice(1).filter(line => line.trim()).map(line => {
+                    const values = line.split(',');
+                    return headers.reduce((obj, header, index) => {
+                        obj[header] = values[index];
+                        return obj;
+                    }, {});
+                });
 
-        Papa.parse('delivery_zones_geocoded.csv', {
-            download: true,
-            header: true,
-            complete: function(results) {
-                results.data
-                    .filter(row => row.Latitude && row.Longitude && 
-                                   !isNaN(parseFloat(row.Latitude)) && 
-                                   !isNaN(parseFloat(row.Longitude)))
-                    .forEach(row => {
-                        const lat = parseFloat(row.Latitude);
-                        const lng = parseFloat(row.Longitude);
-                        const sted = row.StedBeskrivelse;
-                        const price = parseFloat(row['Pris (NOK)']);
-                        const postnr = row.Postnr;
-
-                        if (!markers[sted]) {
-                            markers[sted] = [];
-                        }
-
-                        const color = locationColors[sted] || '#808080'; // Default to gray if location not defined
+                data.forEach(location => {
+                    if (location.Latitude && location.Longitude) {
+                        const lat = parseFloat(location.Latitude);
+                        const lng = parseFloat(location.Longitude);
                         const marker = L.marker([lat, lng], {
+                            title: `${location.Beskrivelse} (Postnr: ${location.Postnr})`,
                             icon: L.divIcon({
-                                html: `<div style="background-color: ${color}; color: #000; font-weight: bold; font-size: 16px; line-height: 40px; width: 40px; height: 40px; border-radius: 50%; text-align: center;">${Math.round(price)}</div>`,
-                                className: 'marker-cluster',
-                                iconSize: [40, 40]
+                                className: 'custom-marker',
+                                html: '<div style="background-color: ' + (colorMap[location.Sted] || '#000000') + '; width: 10px; height: 10px; border-radius: 50%; border: 2px solid #fff;"></div>',
+                                iconSize: [10, 10]
                             })
-                        }).bindPopup(`
-                            <b>Postal Code:</b> ${postnr}<br>
-                            <b>Price (NOK):</b> ${Math.round(price)}<br>
-                            <b>Location:</b> ${sted}
-                        `);
-
-                        markers[sted].push(marker);
-                        allMarkers.push(marker); // Track all markers for auto-zoom
-                    });
-
-                // Add all markers initially
-                allMarkers.forEach(marker => marker.addTo(map));
-
-                // Auto-zoom to fit all markers
-                if (allMarkers.length > 0) {
-                    const group = new L.featureGroup(allMarkers);
-                    map.fitBounds(group.getBounds(), { padding: [50, 50] });
-                } else {
-                    console.warn('No valid markers to display.');
-                }
-
-                // Initial state: Show all
-                toggleMarkers('all');
-            },
-            error: function(error) {
-                console.error('Error loading CSV: Check if delivery_zones_geocoded.csv exists and is accessible:', error);
-            }
-        });
-
-        function toggleMarkers(location) {
-            // Remove all markers
-            allMarkers.forEach(marker => map.removeLayer(marker));
-
-            // Show selected location or all
-            if (location === 'all') {
-                allMarkers.forEach(marker => map.addLayer(marker));
-            } else if (markers[location]) {
-                markers[location].forEach(marker => map.addLayer(marker));
-            }
-
-            // Re-apply auto-zoom for the visible markers
-            const visibleMarkers = location === 'all' ? allMarkers : markers[location] || [];
-            if (visibleMarkers.length > 0) {
-                const group = new L.featureGroup(visibleMarkers);
-                map.fitBounds(group.getBounds(), { padding: [50, 50] });
-            }
-        }
+                        }).addTo(map);
+                        marker.bindPopup(`<b>${location.Beskrivelse}</b><br>Sted: ${location.Sted}<br>Postnr: ${location.Postnr}<br>Pris: ${location['Pris (NOK)']} NOK`);
+                    }
+                });
+            })
+            .catch(error => console.error('Error loading CSV:', error));
     </script>
 </body>
 </html>
