@@ -37,7 +37,6 @@
         .nav-bar a {
             display: inline-block;
             color: #FFFFFF;
-            background-color: #00A4D6;
             text-decoration: none;
             padding: 10px 20px;
             margin: 5px;
@@ -46,12 +45,17 @@
             transition: background-color 0.3s, transform 0.2s;
         }
         .nav-bar a:hover {
-            background-color: #E30613;
             transform: scale(1.05);
         }
         .nav-bar a.active {
-            background-color: #E30613;
+            filter: brightness(1.2);
         }
+        .nav-bar a.all { background-color: #666666; } /* Gray for 'Alle' */
+        .nav-bar a.skedsmo { background-color: #1d4877; } /* Dark Blue */
+        .nav-bar a.bergen { background-color: #1b8a5a; } /* Teal/Green */
+        .nav-bar a.stavanger { background-color: #fbb021; } /* Yellow/Orange */
+        .nav-bar a.trondheim { background-color: #f68838; } /* Orange */
+        .nav-bar a.ski { background-color: #ee3e32; } /* Red */
         .map-container {
             max-width: 1200px;
             margin: 20px auto;
@@ -109,18 +113,18 @@
         <h1>Delivery Zones Map</h1>
     </header>
     <div class="nav-bar">
-        <a href="javascript:void(0)" onclick="toggleLayer('all')" class="active">Alle</a>
-        <a href="javascript:void(0)" onclick="toggleLayer('Oslo')">Oslo</a>
-        <a href="javascript:void(0)" onclick="toggleLayer('Bergen')">Bergen</a>
-        <a href="javascript:void(0)" onclick="toggleLayer('Stavanger')">Stavanger</a>
-        <a href="javascript:void(0)" onclick="toggleLayer('Trondheim')">Trondheim</a>
-        <a href="javascript:void(0)" onclick="toggleLayer('Ski')">Ski</a>
+        <a href="javascript:void(0)" onclick="toggleLayer('all')" class="all active">Alle</a>
+        <a href="javascript:void(0)" onclick="toggleLayer('Skedsmo')" class="skedsmo">Skedsmo</a>
+        <a href="javascript:void(0)" onclick="toggleLayer('Bergen')" class="bergen">Bergen</a>
+        <a href="javascript:void(0)" onclick="toggleLayer('Stavanger')" class="stavanger">Stavanger</a>
+        <a href="javascript:void(0)" onclick="toggleLayer('Trondheim')" class="trondheim">Trondheim</a>
+        <a href="javascript:void(0)" onclick="toggleLayer('Ski')" class="ski">Ski</a>
     </div>
     <div class="map-container">
         <div id="map"></div>
     </div>
     <div class="legend">
-        <div class="legend-item"><span style="background-color: #1d4877;"></span>Oslo</div>
+        <div class="legend-item"><span style="background-color: #1d4877;"></span>Skedsmo</div>
         <div class="legend-item"><span style="background-color: #1b8a5a;"></span>Bergen</div>
         <div class="legend-item"><span style="background-color: #fbb021;"></span>Stavanger</div>
         <div class="legend-item"><span style="background-color: #f68838;"></span>Trondheim</div>
@@ -136,52 +140,41 @@
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         }).addTo(map);
-
         const colorMap = {
-            'Oslo': '#1d4877',        // Dark Blue
-            'Bergen': '#1b8a5a',      // Teal/Green
-            'Stavanger': '#fbb021',   // Yellow/Orange
-            'Trondheim': '#f68838',   // Orange
-            'Ski': '#ee3e32'          // Red
+            'Skedsmo': '#1d4877', // Dark Blue
+            'Bergen': '#1b8a5a', // Teal/Green
+            'Stavanger': '#fbb021', // Yellow/Orange
+            'Trondheim': '#f68838', // Orange
+            'Ski': '#ee3e32' // Red
         };
-
         const layers = {
             'all': L.layerGroup(),
-            'Oslo': L.layerGroup(),
+            'Skedsmo': L.layerGroup(),
             'Bergen': L.layerGroup(),
             'Stavanger': L.layerGroup(),
             'Trondheim': L.layerGroup(),
             'Ski': L.layerGroup()
         };
-
-        Object.values(layers).forEach(layer => layer.addTo(map));
-
         function toggleLayer(sted) {
+            // Clear all layers and remove active class from buttons
             Object.keys(layers).forEach(key => {
                 layers[key].clearLayers();
                 document.querySelectorAll('.nav-bar a').forEach(a => a.classList.remove('active'));
             });
-            if (sted === 'all') {
-                document.querySelector(`.nav-bar a[onclick="toggleLayer('all')"]`).classList.add('active');
-                Object.values(layers).forEach(layer => layer.addTo(map));
-            } else {
-                document.querySelector(`.nav-bar a[onclick="toggleLayer('${sted}')"]`).classList.add('active');
-                layers[sted].addTo(map);
-            }
-            loadMarkers();
-        }
-
-        function loadMarkers() {
+            // Activate the selected button
+            document.querySelector(`.nav-bar a[onclick="toggleLayer('${sted}')"]`).classList.add('active');
+            
+            // Load markers based on the selected layer
             Papa.parse('delivery_zones_geocoded.csv', {
                 download: true,
                 header: true,
                 complete: function(results) {
-                    const data = results.data.filter(row => 
-                        row.Latitude && row.Longitude && 
-                        !isNaN(parseFloat(row.Latitude)) && 
-                        !isNaN(parseFloat(row.Longitude))
+                    const data = results.data.filter(row =>
+                        row.Latitude && row.Longitude &&
+                        !isNaN(parseFloat(row.Latitude)) &&
+                        !isNaN(parseFloat(row.Longitude)) &&
+                        (sted === 'all' || row.Sted === sted)
                     );
-
                     data.forEach(location => {
                         const lat = parseFloat(location.Latitude);
                         const lng = parseFloat(location.Longitude);
@@ -189,8 +182,7 @@
                         const beskrivelse = location.Beskrivelse;
                         const postnr = location.Postnr;
                         const price = parseFloat(location['Pris (NOK)']);
-
-                        const markerColor = colorMap[sted] || '#000000'; // Fallback to black if Sted not in map
+                        const markerColor = colorMap[sted] || '#000000'; // Fallback to black
                         const marker = L.marker([lat, lng], {
                             title: `${beskrivelse} (Postnr: ${postnr})`,
                             icon: L.divIcon({
@@ -202,19 +194,27 @@
                             <b>${beskrivelse}</b><br>
                             Sted: ${sted}<br>
                             Postnr: ${postnr}<br>
-                            Pris: ${price} NOK
+                            Pris: ${price} NOK<br>
+                            Latitude: ${lat.toFixed(6)}<br>
+                            Longitude: ${lng.toFixed(6)}
                         `);
-
-                        layers[sted] ? layers[sted].addLayer(marker) : layers['all'].addLayer(marker);
-                        layers['all'].addLayer(marker);
+                        layers[sted].addLayer(marker);
+                        if (sted === 'all') {
+                            layers[sted].addLayer(marker);
+                        }
                     });
-
-                    // Auto-zoom to bounds of all data
+                    // Add the selected layer to the map
+                    if (sted === 'all') {
+                        Object.values(layers).forEach(layer => layer.addTo(map));
+                    } else {
+                        layers[sted].addTo(map);
+                    }
+                    // Auto-zoom to bounds of displayed markers
                     if (data.length > 0) {
                         const bounds = L.latLngBounds(data.map(row => [parseFloat(row.Latitude), parseFloat(row.Longitude)]));
                         map.fitBounds(bounds, { padding: [50, 50] });
                     } else {
-                        console.warn('No valid coordinates found in CSV. Check file path or column names.');
+                        console.warn('No valid coordinates found for selected layer. Check CSV data or Sted value.');
                     }
                 },
                 error: function(error) {
@@ -222,7 +222,6 @@
                 }
             });
         }
-
         // Load all markers by default
         toggleLayer('all');
     </script>
