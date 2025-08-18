@@ -110,21 +110,21 @@
     </header>
     <div class="nav-bar">
         <a href="javascript:void(0)" onclick="toggleLayer('all')" class="active">Alle</a>
-        <a href="javascript:void(0)" onclick="toggleLayer('Skedsmo')">Skedsmo</a>
-        <a href="javascript:void(0)" onclick="toggleLayer('Ski')">Ski</a>
+        <a href="javascript:void(0)" onclick="toggleLayer('Oslo')">Oslo</a>
         <a href="javascript:void(0)" onclick="toggleLayer('Bergen')">Bergen</a>
-        <a href="javascript:void(0)" onclick="toggleLayer('Trondheim')">Trondheim</a>
         <a href="javascript:void(0)" onclick="toggleLayer('Stavanger')">Stavanger</a>
+        <a href="javascript:void(0)" onclick="toggleLayer('Trondheim')">Trondheim</a>
+        <a href="javascript:void(0)" onclick="toggleLayer('Ski')">Ski</a>
     </div>
     <div class="map-container">
         <div id="map"></div>
     </div>
     <div class="legend">
-        <div class="legend-item"><span style="background-color: #FF0000;"></span>Skedsmo</div>
-        <div class="legend-item"><span style="background-color: #00FF00;"></span>Ski</div>
-        <div class="legend-item"><span style="background-color: #0000FF;"></span>Bergen</div>
-        <div class="legend-item"><span style="background-color: #FFA500;"></span>Trondheim</div>
-        <div class="legend-item"><span style="background-color: #800080;"></span>Stavanger</div>
+        <div class="legend-item"><span style="background-color: #1d4877;"></span>Oslo</div>
+        <div class="legend-item"><span style="background-color: #1b8a5a;"></span>Bergen</div>
+        <div class="legend-item"><span style="background-color: #fbb021;"></span>Stavanger</div>
+        <div class="legend-item"><span style="background-color: #f68838;"></span>Trondheim</div>
+        <div class="legend-item"><span style="background-color: #ee3e32;"></span>Ski</div>
     </div>
     <footer>
         <p>Powered by <a href="https://www.openstreetmap.org" target="_blank">OpenStreetMap</a> | <a href="https://www.autoringen.no" target="_blank">Autoringen</a></p>
@@ -132,26 +132,26 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
     <script>
-        const map = L.map('map').setView([60.4720, 8.4689], 5); // Initial center of Norway
+        const map = L.map('map'); // No initial setView, will auto-zoom
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         }).addTo(map);
 
         const colorMap = {
-            'Skedsmo': '#FF0000', // Red
-            'Ski': '#00FF00',    // Green
-            'Bergen': '#0000FF', // Blue
-            'Trondheim': '#FFA500', // Orange
-            'Stavanger': '#800080' // Purple
+            'Oslo': '#1d4877',        // Dark Blue
+            'Bergen': '#1b8a5a',      // Teal/Green
+            'Stavanger': '#fbb021',   // Yellow/Orange
+            'Trondheim': '#f68838',   // Orange
+            'Ski': '#ee3e32'          // Red
         };
 
         const layers = {
             'all': L.layerGroup(),
-            'Skedsmo': L.layerGroup(),
-            'Ski': L.layerGroup(),
+            'Oslo': L.layerGroup(),
             'Bergen': L.layerGroup(),
+            'Stavanger': L.layerGroup(),
             'Trondheim': L.layerGroup(),
-            'Stavanger': L.layerGroup()
+            'Ski': L.layerGroup()
         };
 
         Object.values(layers).forEach(layer => layer.addTo(map));
@@ -185,21 +185,31 @@
                     data.forEach(location => {
                         const lat = parseFloat(location.Latitude);
                         const lng = parseFloat(location.Longitude);
-                        const markerColor = colorMap[location.Sted] || '#000000'; // Fallback to black if Sted not in map
+                        const sted = location.Sted;
+                        const beskrivelse = location.Beskrivelse;
+                        const postnr = location.Postnr;
+                        const price = parseFloat(location['Pris (NOK)']);
+
+                        const markerColor = colorMap[sted] || '#000000'; // Fallback to black if Sted not in map
                         const marker = L.marker([lat, lng], {
-                            title: `${location.Beskrivelse} (Postnr: ${location.Postnr})`,
+                            title: `${beskrivelse} (Postnr: ${postnr})`,
                             icon: L.divIcon({
                                 className: 'custom-marker',
                                 html: `<div style="background-color: ${markerColor}; width: 10px; height: 10px; border-radius: 50%; border: 2px solid #fff;"></div>`,
                                 iconSize: [10, 10]
                             })
-                        });
-                        marker.bindPopup(`<b>${location.Beskrivelse}</b><br>Sted: ${location.Sted}<br>Postnr: ${location.Postnr}<br>Pris: ${location['Pris (NOK)']} NOK`);
-                        layers[location.Sted] ? layers[location.Sted].addLayer(marker) : layers['all'].addLayer(marker);
+                        }).bindPopup(`
+                            <b>${beskrivelse}</b><br>
+                            Sted: ${sted}<br>
+                            Postnr: ${postnr}<br>
+                            Pris: ${price} NOK
+                        `);
+
+                        layers[sted] ? layers[sted].addLayer(marker) : layers['all'].addLayer(marker);
                         layers['all'].addLayer(marker);
                     });
 
-                    // Auto-zoom to bounds
+                    // Auto-zoom to bounds of all data
                     if (data.length > 0) {
                         const bounds = L.latLngBounds(data.map(row => [parseFloat(row.Latitude), parseFloat(row.Longitude)]));
                         map.fitBounds(bounds, { padding: [50, 50] });
