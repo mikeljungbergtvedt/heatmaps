@@ -6,7 +6,6 @@
     <title>Gire soner</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
     <style>
         body {
@@ -31,6 +30,46 @@
             font-size: 2.5em;
             font-weight: 700;
         }
+        .controls {
+            max-width: 1200px;
+            margin: 10px auto;
+            padding: 10px;
+            text-align: center;
+        }
+        .controls button {
+            padding: 10px 20px;
+            margin: 5px;
+            background-color: #00A4D6;
+            color: #FFFFFF;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 700;
+            transition: background-color 0.3s;
+        }
+        .controls button:hover {
+            background-color: #E30613;
+        }
+        .color-table {
+            max-width: 1200px;
+            margin: 10px auto;
+            padding: 10px;
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 8px;
+        }
+        .color-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .color-table th, .color-table td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .color-table th {
+            background-color: #003087;
+            color: #FFFFFF;
+        }
         .map-container {
             max-width: 1200px;
             margin: 20px auto;
@@ -42,13 +81,6 @@
         #map {
             width: 100%;
             height: 100%;
-        }
-        #error-message {
-            display: none;
-            text-align: center;
-            color: red;
-            font-size: 1.5em;
-            margin: 20px auto;
         }
         footer {
             background-color: #003087;
@@ -76,19 +108,11 @@
                 padding: 10px;
                 height: 70vh;
             }
-        }
-        .marker-cluster {
-            border-radius: 50%; /* Round shape */
-        }
-        .marker-cluster div {
-            width: 40px;
-            height: 40px;
-            line-height: 40px;
-            border-radius: 50%;
-            font-size: 16px;
-            font-weight: bold;
-            color: #000; /* Black numbers */
-            text-align: center;
+            .controls button {
+                width: 80%;
+                margin: 5px auto;
+                display: block;
+            }
         }
     </style>
 </head>
@@ -97,165 +121,118 @@
         <img src="logo.png" alt="Autoringen Logo" class="logo">
         <h1>Gire soner</h1>
     </header>
+    <div class="controls">
+        <button onclick="toggleMarkers('all')">Show All</button>
+        <button onclick="toggleMarkers('Oslo')">Oslo</button>
+        <button onclick="toggleMarkers('Bergen')">Bergen</button>
+        <button onclick="toggleMarkers('Stavanger')">Stavanger</button>
+        <button onclick="toggleMarkers('Trondheim')">Trondheim</button>
+        <button onclick="toggleMarkers('Ski')">Ski</button>
+        <button onclick="toggleMarkers('Drammen')">Drammen</button>
+    </div>
+    <div class="color-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Location</th>
+                    <th>Color</th>
+                </tr>
+            </thead>
+            <tbody id="colorTableBody"></tbody>
+        </table>
+    </div>
     <div class="map-container">
         <div id="map"></div>
     </div>
-    <div id="error-message">Incorrect password. Access denied.</div>
     <footer>
         <p>Powered by <a href="https://www.openstreetmap.org" target="_blank">OpenStreetMap</a> | <a href="https://www.autoringen.no" target="_blank">Autoringen</a></p>
     </footer>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
-    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script>
-        const correctPassword = "iloveautoringen";
-        const authTimestamp = sessionStorage.getItem('authTimestamp');
-        const timeoutDuration = 600000; // 10 minutes in milliseconds
-        let isAuthenticated = false;
+        const map = L.map('map').setView([59.9139, 10.7522], 6); // Initial center on Norway
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
 
-        if (authTimestamp && (Date.now() - parseInt(authTimestamp)) < timeoutDuration) {
-            isAuthenticated = true;
-        } else {
-            let password = prompt("Enter password to access the map:");
-            if (password === correctPassword) {
-                isAuthenticated = true;
-                sessionStorage.setItem('authTimestamp', Date.now());
-            }
-        }
+        // Define colors for each location
+        const locationColors = {
+            'Oslo': '#1d4877',        // Dark Blue
+            'Bergen': '#1b8a5a',      // Teal/Green
+            'Stavanger': '#fbb021',   // Yellow/Orange
+            'Trondheim': '#f68838',   // Orange
+            'Ski': '#ee3e32',         // Red
+            'Drammen': '#6a1b9a'      // Purple (additional color)
+        };
 
-        if (isAuthenticated) {
-            const map = L.map('map').setView([59.9139, 10.7522], 6); // Initial center on Norway
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            }).addTo(map);
+        let markers = {};
 
-            Papa.parse('delivery_zones_geocoded.csv', {
-                download: true,
-                header: true,
-                complete: function(results) {
-                    const pointsByPostnr = {};
-                    let totalZones = 0;
-                    results.data
-                        .filter(row => row.Latitude && row.Longitude && 
-                                       !isNaN(parseFloat(row.Latitude)) && 
-                                       !isNaN(parseFloat(row.Longitude)))
-                        .forEach(row => {
-                            const postnr = row.Postnr;
-                            const lat = parseFloat(row.Latitude);
-                            const lng = parseFloat(row.Longitude);
-                            const price = parseFloat(row['Pris (NOK)']);
-                            if (!pointsByPostnr[postnr]) {
-                                pointsByPostnr[postnr] = { lat, lng, price: 0, count: 0 };
-                            }
-                            pointsByPostnr[postnr].price += price;
-                            pointsByPostnr[postnr].count += 1; // Count zones per postcode
-                            totalZones += 1;
-                        });
+        Papa.parse('delivery_zones_geocoded.csv', {
+            download: true,
+            header: true,
+            complete: function(results) {
+                results.data
+                    .filter(row => row.Latitude && row.Longitude && 
+                                   !isNaN(parseFloat(row.Latitude)) && 
+                                   !isNaN(parseFloat(row.Longitude)))
+                    .forEach(row => {
+                        const lat = parseFloat(row.Latitude);
+                        const lng = parseFloat(row.Longitude);
+                        const sted = row.StedBeskrivelse;
+                        const price = parseFloat(row['Pris (NOK)']);
+                        const postnr = row.Postnr;
 
-                    // Find max price for normalization
-                    const maxPrice = Math.max(...Object.values(pointsByPostnr).map(p => p.price));
-
-                    // Define custom color points (low to high price)
-                    const colorPoints = [
-                        { ratio: 0.0, color: [29, 72, 119] },   // #1d4877 - Dark Blue (low)
-                        { ratio: 0.25, color: [27, 138, 90] },  // #1b8a5a - Teal/Green
-                        { ratio: 0.5, color: [251, 176, 33] },  // #fbb021 - Yellow/Orange
-                        { ratio: 0.75, color: [246, 136, 56] }, // #f68838 - Orange
-                        { ratio: 1.0, color: [238, 62, 50] }    // #ee3e32 - Red (high)
-                    ];
-
-                    // Interpolate color based on ratio
-                    function interpolateColor(ratio) {
-                        if (ratio <= 0) return colorPoints[0].color;
-                        if (ratio >= 1) return colorPoints[colorPoints.length - 1].color;
-                        for (let i = 0; i < colorPoints.length - 1; i++) {
-                            if (ratio <= colorPoints[i + 1].ratio) {
-                                const t = (ratio - colorPoints[i].ratio) / (colorPoints[i + 1].ratio - colorPoints[i].ratio);
-                                const r = Math.round(colorPoints[i].color[0] + t * (colorPoints[i + 1].color[0] - colorPoints[i].color[0]));
-                                const g = Math.round(colorPoints[i].color[1] + t * (colorPoints[i + 1].color[1] - colorPoints[i].color[1]));
-                                const b = Math.round(colorPoints[i].color[2] + t * (colorPoints[i + 1].color[2] - colorPoints[i].color[2]));
-                                return [r, g, b];
-                            }
+                        if (!markers[sted]) {
+                            markers[sted] = [];
                         }
-                        return colorPoints[colorPoints.length - 1].color;
-                    }
 
-                    // Create heatmap points (optional, based on price)
-                    const heatmapPoints = Object.values(pointsByPostnr).map(p => [p.lat, p.lng, p.price]);
-
-                    // Create heatmap layer
-                    const heatLayer = L.heatLayer(heatmapPoints, { radius: 25 });
-
-                    // Create cluster group for grouping pins
-                    const markerLayer = L.markerClusterGroup({
-                        maxClusterRadius: 50, // Approximate 20km at zoom level 6
-                        iconCreateFunction: function(cluster) {
-                            const markers = cluster.getAllChildMarkers();
-                            const totalPrice = markers.reduce((sum, marker) => sum + (marker.options.price || 0), 0);
-                            const ratio = maxPrice > 0 ? totalPrice / maxPrice : 0;
-                            const [r, g, b] = interpolateColor(ratio);
-                            const color = `rgb(${r}, ${g}, ${b})`;
-                            return L.divIcon({
-                                html: `<div style="background-color: ${color}; color: #000; font-weight: bold; font-size: 16px; line-height: 40px; width: 40px; height: 40px; border-radius: 50%; text-align: center;">${Math.round(totalPrice)}</div>`,
-                                className: 'marker-cluster',
-                                iconSize: [40, 40]
-                            });
-                        }
-                    });
-
-                    // Add individual markers to the cluster group with price
-                    Object.entries(pointsByPostnr).forEach(([postnr, data]) => {
-                        const ratio = maxPrice > 0 ? data.price / maxPrice : 0;
-                        const [r, g, b] = interpolateColor(ratio);
-                        const color = `rgb(${r}, ${g}, ${b})`;
-
-                        const popupContent = `
-                            <b>Postal Code:</b> ${postnr}<br>
-                            <b>Total Price (NOK):</b> ${Math.round(data.price)}<br>
-                            <b>Zones:</b> ${data.count}
-                        `;
-                        L.marker([data.lat, data.lng], {
+                        const color = locationColors[sted] || '#808080'; // Default to gray if location not defined
+                        const marker = L.marker([lat, lng], {
                             icon: L.divIcon({
-                                html: `<div style="background-color: ${color}; color: #000; font-weight: bold; font-size: 16px; line-height: 40px; width: 40px; height: 40px; border-radius: 50%; text-align: center;">${Math.round(data.price)}</div>`,
+                                html: `<div style="background-color: ${color}; color: #000; font-weight: bold; font-size: 16px; line-height: 40px; width: 40px; height: 40px; border-radius: 50%; text-align: center;">${Math.round(price)}</div>`,
                                 className: 'marker-cluster',
                                 iconSize: [40, 40]
-                            }),
-                            price: data.price // Store price for clustering
-                        })
-                        .bindPopup(popupContent)
-                        .addTo(markerLayer);
+                            })
+                        }).bindPopup(`
+                            <b>Postal Code:</b> ${postnr}<br>
+                            <b>Price (NOK):</b> ${Math.round(price)}<br>
+                            <b>Location:</b> ${sted}
+                        `).addTo(map);
+
+                        markers[sted].push(marker);
                     });
 
-                    console.log(`Total zones processed: ${totalZones}`); // Debug total zones
-
-                    // Add layers to map
-                    heatLayer.addTo(map);
-                    markerLayer.addTo(map);
-
-                    // Layer control
-                    const baseLayers = {};
-                    const overlayLayers = {
-                        "Heatmap": heatLayer,
-                        "Markers": markerLayer
-                    };
-                    L.control.layers(baseLayers, overlayLayers).addTo(map);
-
-                    // Auto-zoom to bounds
-                    if (heatmapPoints.length > 0) {
-                        const bounds = L.latLngBounds(heatmapPoints.map(p => [p[0], p[1]]));
-                        map.fitBounds(bounds, { padding: [50, 50] });
-                    } else {
-                        console.warn('No valid coordinates found in CSV. Check file path or geocoding. Data:', results.data);
-                    }
-                },
-                error: function(error) {
-                    console.error('Error loading CSV: Check if delivery_zones_geocoded.csv exists and is accessible:', error);
+                // Populate color table
+                const tableBody = document.getElementById('colorTableBody');
+                for (const [location, color] of Object.entries(locationColors)) {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td>${location}</td><td style="background-color: ${color}; width: 20px;"></td>`;
+                    tableBody.appendChild(row);
                 }
-            });
-        } else {
-            document.getElementById('map').style.display = 'none';
-            document.getElementById('error-message').style.display = 'block';
+
+                // Initial state: Show all
+                toggleMarkers('all');
+            },
+            error: function(error) {
+                console.error('Error loading CSV: Check if delivery_zones_geocoded.csv exists and is accessible:', error);
+            }
+        });
+
+        function toggleMarkers(location) {
+            // Hide all markers
+            for (const loc in markers) {
+                markers[loc].forEach(marker => map.removeLayer(marker));
+            }
+
+            // Show selected location or all
+            if (location === 'all') {
+                for (const loc in markers) {
+                    markers[loc].forEach(marker => map.addLayer(marker));
+                }
+            } else if (markers[location]) {
+                markers[location].forEach(marker => map.addLayer(marker));
+            }
         }
     </script>
 </body>
