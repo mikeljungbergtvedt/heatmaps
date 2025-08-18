@@ -11,7 +11,7 @@ ID,Sted,Beskrivelse,Postnr,Pris (NOK),Latitude,Longitude
 8,Skedsmo,Oslo 5,2069,690,60.1571,11.185
 9,Bergen,Bergen,5003,690,60.393,5.3242
 9,Bergen,Bergen,5097,690,60.393,5.3242
-10,Stavanger,Stavanger 1,4000,590,59.1052,9.556
+10,Stavanger,Stavanger 1,4000,590,58.97005 5.73332
 10,Stavanger,Stavanger 1,4099,590,58.9701,5.7333
 11,Stavanger,Stavanger 2,4300,590,58.8524,5.7352
 11,Stavanger,Stavanger 2,4339,590,58.7642,5.8525
@@ -101,7 +101,3 @@ ID,Sted,Beskrivelse,Postnr,Pris (NOK),Latitude,Longitude
 60,Skedsmo,Enebakk 5,1911,990,59.8301,11.1447
 60,Skedsmo,Enebakk 5,1912,990,59.7444,11.1612
 61,Skedsmo,Enebakk 6,1914,990,59.7641,10.9525
-62,Skedsmo,Drammen 3,3000,990,59.7491,10.1985
-62,Skedsmo,Drammen 3,3048,990,59.7463,10.1072
-63,Skedsmo,Drammen 4,3060,990,59.6281,10.3889
-63,Skedsmo,Drammen 4,3066,990,59.7491,10.1985
