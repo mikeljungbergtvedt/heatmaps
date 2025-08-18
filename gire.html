@@ -64,29 +64,24 @@
             width: 100%;
             height: 100%;
         }
-        #error-message {
-            display: none;
-            text-align: center;
-            color: red;
-            font-size: 1.5em;
-            margin: 20px auto;
-        }
-        footer {
-            background-color: #003087;
-            color: #FFFFFF;
-            text-align: center;
+        .legend {
+            max-width: 1200px;
+            margin: 10px auto;
             padding: 10px;
-            position: relative;
-            bottom: 0;
-            width: 100%;
-            font-size: 0.9em;
+            text-align: center;
+            font-size: 14px;
         }
-        footer a {
-            color: #00A4D6;
-            text-decoration: none;
+        .legend-item {
+            display: inline-block;
+            margin: 5px;
         }
-        footer a:hover {
-            text-decoration: underline;
+        .legend-item span {
+            display: inline-block;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            margin-right: 5px;
+            vertical-align: middle;
         }
         @media (max-width: 600px) {
             .nav-bar a {
@@ -102,6 +97,9 @@
                 padding: 10px;
                 height: 70vh;
             }
+            .legend {
+                font-size: 12px;
+            }
         }
     </style>
 </head>
@@ -111,44 +109,69 @@
         <h1>Delivery Zones Map</h1>
     </header>
     <div class="nav-bar">
-        <a href="gire.html" class="active">Norge</a>
-        <a href="ski.html">Ski</a>
-        <a href="skedsmo.html">Skedsmo</a>
-        <a href="trondheim.html">Trondheim</a>
-        <a href="bergen.html">Bergen</a>
-        <a href="stavanger.html">Stavanger</a>
+        <a href="javascript:void(0)" onclick="toggleLayer('all')" class="active">Alle</a>
+        <a href="javascript:void(0)" onclick="toggleLayer('Skedsmo')">Skedsmo</a>
+        <a href="javascript:void(0)" onclick="toggleLayer('Ski')">Ski</a>
+        <a href="javascript:void(0)" onclick="toggleLayer('Bergen')">Bergen</a>
+        <a href="javascript:void(0)" onclick="toggleLayer('Trondheim')">Trondheim</a>
+        <a href="javascript:void(0)" onclick="toggleLayer('Stavanger')">Stavanger</a>
     </div>
     <div class="map-container">
         <div id="map"></div>
     </div>
-    <div id="error-message">Incorrect password. Access denied.</div>
+    <div class="legend">
+        <div class="legend-item"><span style="background-color: #FF0000;"></span>Skedsmo</div>
+        <div class="legend-item"><span style="background-color: #00FF00;"></span>Ski</div>
+        <div class="legend-item"><span style="background-color: #0000FF;"></span>Bergen</div>
+        <div class="legend-item"><span style="background-color: #FFA500;"></span>Trondheim</div>
+        <div class="legend-item"><span style="background-color: #800080;"></span>Stavanger</div>
+    </div>
     <footer>
         <p>Powered by <a href="https://www.openstreetmap.org" target="_blank">OpenStreetMap</a> | <a href="https://www.autoringen.no" target="_blank">Autoringen</a></p>
     </footer>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
     <script>
-        const correctPassword = "iloveautoringen";
-        const authTimestamp = sessionStorage.getItem('authTimestamp');
-        const timeoutDuration = 600000; // 10 minutes in milliseconds
-        let isAuthenticated = false;
+        const map = L.map('map').setView([60.4720, 8.4689], 5); // Initial center of Norway
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
 
-        if (authTimestamp && (Date.now() - parseInt(authTimestamp)) < timeoutDuration) {
-            isAuthenticated = true;
-        } else {
-            let password = prompt("Enter password to access the map:");
-            if (password === correctPassword) {
-                isAuthenticated = true;
-                sessionStorage.setItem('authTimestamp', Date.now());
+        const colorMap = {
+            'Skedsmo': '#FF0000', // Red
+            'Ski': '#00FF00',    // Green
+            'Bergen': '#0000FF', // Blue
+            'Trondheim': '#FFA500', // Orange
+            'Stavanger': '#800080' // Purple
+        };
+
+        const layers = {
+            'all': L.layerGroup(),
+            'Skedsmo': L.layerGroup(),
+            'Ski': L.layerGroup(),
+            'Bergen': L.layerGroup(),
+            'Trondheim': L.layerGroup(),
+            'Stavanger': L.layerGroup()
+        };
+
+        Object.values(layers).forEach(layer => layer.addTo(map));
+
+        function toggleLayer(sted) {
+            Object.keys(layers).forEach(key => {
+                layers[key].clearLayers();
+                document.querySelectorAll('.nav-bar a').forEach(a => a.classList.remove('active'));
+            });
+            if (sted === 'all') {
+                document.querySelector(`.nav-bar a[onclick="toggleLayer('all')"]`).classList.add('active');
+                Object.values(layers).forEach(layer => layer.addTo(map));
+            } else {
+                document.querySelector(`.nav-bar a[onclick="toggleLayer('${sted}')"]`).classList.add('active');
+                layers[sted].addTo(map);
             }
+            loadMarkers();
         }
 
-        if (isAuthenticated) {
-            const map = L.map('map').setView([60.4720, 8.4689], 5); // Initial center of Norway
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            }).addTo(map);
-
+        function loadMarkers() {
             Papa.parse('delivery_zones_geocoded.csv', {
                 download: true,
                 header: true,
@@ -158,14 +181,6 @@
                         !isNaN(parseFloat(row.Latitude)) && 
                         !isNaN(parseFloat(row.Longitude))
                     );
-
-                    const colorMap = {
-                        'Skedsmo': '#FF0000', // Red
-                        'Ski': '#00FF00',    // Green
-                        'Bergen': '#0000FF', // Blue
-                        'Trondheim': '#FFA500', // Orange
-                        'Stavanger': '#800080' // Purple
-                    };
 
                     data.forEach(location => {
                         const lat = parseFloat(location.Latitude);
@@ -178,8 +193,10 @@
                                 html: `<div style="background-color: ${markerColor}; width: 10px; height: 10px; border-radius: 50%; border: 2px solid #fff;"></div>`,
                                 iconSize: [10, 10]
                             })
-                        }).addTo(map);
+                        });
                         marker.bindPopup(`<b>${location.Beskrivelse}</b><br>Sted: ${location.Sted}<br>Postnr: ${location.Postnr}<br>Pris: ${location['Pris (NOK)']} NOK`);
+                        layers[location.Sted] ? layers[location.Sted].addLayer(marker) : layers['all'].addLayer(marker);
+                        layers['all'].addLayer(marker);
                     });
 
                     // Auto-zoom to bounds
@@ -194,10 +211,10 @@
                     console.error('Error loading CSV: Check if delivery_zones_geocoded.csv exists and is accessible:', error);
                 }
             });
-        } else {
-            document.getElementById('map').style.display = 'none';
-            document.getElementById('error-message').style.display = 'block';
         }
+
+        // Load all markers by default
+        toggleLayer('all');
     </script>
 </body>
 </html>
