@@ -155,6 +155,16 @@
             'Trondheim': L.layerGroup(),
             'Ski': L.layerGroup()
         };
+        // Object to track coordinates and their counts for offsetting
+        const coordinateCounts = {};
+        function getOffsetCoordinates(lat, lng, index) {
+            if (index === 0) return [lat, lng]; // No offset for first marker
+            const offsetDistance = 0.0001; // ~10 meters in lat/lng
+            const angle = (index * 2 * Math.PI) / 8; // Spread up to 8 markers in a circle
+            const offsetLat = lat + offsetDistance * Math.cos(angle);
+            const offsetLng = lng + offsetDistance * Math.sin(angle);
+            return [offsetLat, offsetLng];
+        }
         function toggleLayer(sted) {
             // Clear all layers and remove active class from buttons
             Object.keys(layers).forEach(key => {
@@ -163,7 +173,8 @@
             });
             // Activate the selected button
             document.querySelector(`.nav-bar a[onclick="toggleLayer('${sted}')"]`).classList.add('active');
-            
+            // Reset coordinate counts for new marker placement
+            Object.keys(coordinateCounts).forEach(key => delete coordinateCounts[key]);
             // Load markers based on the selected layer
             Papa.parse('delivery_zones_geocoded.csv', {
                 download: true,
@@ -183,7 +194,13 @@
                         const postnr = location.Postnr;
                         const price = parseFloat(location['Pris (NOK)']);
                         const markerColor = colorMap[sted] || '#000000'; // Fallback to black
-                        const marker = L.marker([lat, lng], {
+                        // Track coordinates for offsetting
+                        const coordKey = `${lat},${lng}`;
+                        coordinateCounts[coordKey] = (coordinateCounts[coordKey] || 0) + 1;
+                        const index = coordinateCounts[coordKey] - 1;
+                        // Apply offset for overlapping markers
+                        const [offsetLat, offsetLng] = getOffsetCoordinates(lat, lng, index);
+                        const marker = L.marker([offsetLat, offsetLng], {
                             title: `${beskrivelse} (Postnr: ${postnr})`,
                             icon: L.divIcon({
                                 className: 'custom-marker',
@@ -211,7 +228,13 @@
                     }
                     // Auto-zoom to bounds of displayed markers
                     if (data.length > 0) {
-                        const bounds = L.latLngBounds(data.map(row => [parseFloat(row.Latitude), parseFloat(row.Longitude)]));
+                        const bounds = L.latLngBounds(data.map(row => {
+                            const lat = parseFloat(row.Latitude);
+                            const lng = parseFloat(row.Longitude);
+                            const coordKey = `${lat},${lng}`;
+                            const index = (coordinateCounts[coordKey] || 1) - 1;
+                            return getOffsetCoordinates(lat, lng, index);
+                        }));
                         map.fitBounds(bounds, { padding: [50, 50] });
                     } else {
                         console.warn('No valid coordinates found for selected layer. Check CSV data or Sted value.');
