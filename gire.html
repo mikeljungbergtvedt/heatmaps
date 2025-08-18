@@ -155,16 +155,6 @@
             'Trondheim': L.layerGroup(),
             'Ski': L.layerGroup()
         };
-        // Object to track coordinates and their counts for offsetting
-        const coordinateCounts = {};
-        function getOffsetCoordinates(lat, lng, index) {
-            if (index === 0) return [lat, lng]; // No offset for first marker
-            const offsetDistance = 0.00015; // ~15 meters (increased by 50% from 0.0001)
-            const angle = (index * 2 * Math.PI) / 8; // Spread up to 8 markers in a circle
-            const offsetLat = lat + offsetDistance * Math.cos(angle);
-            const offsetLng = lng + offsetDistance * Math.sin(angle);
-            return [offsetLat, offsetLng];
-        }
         function toggleLayer(sted) {
             // Clear all layers and remove active class from buttons
             Object.keys(layers).forEach(key => {
@@ -173,8 +163,6 @@
             });
             // Activate the selected button
             document.querySelector(`.nav-bar a[onclick="toggleLayer('${sted}')"]`).classList.add('active');
-            // Reset coordinate counts for new marker placement
-            Object.keys(coordinateCounts).forEach(key => delete coordinateCounts[key]);
             // Load markers based on the selected layer
             Papa.parse('delivery_zones_geocoded.csv', {
                 download: true,
@@ -186,38 +174,56 @@
                         !isNaN(parseFloat(row.Longitude)) &&
                         (sted === 'all' || row.Sted === sted)
                     );
+                    // Group locations by identical coordinates
+                    const coordGroups = {};
                     data.forEach(location => {
-                        const lat = parseFloat(location.Latitude);
-                        const lng = parseFloat(location.Longitude);
-                        const sted = location.Sted;
-                        const beskrivelse = location.Beskrivelse;
-                        const postnr = location.Postnr;
-                        const price = parseFloat(location['Pris (NOK)']);
-                        const markerColor = colorMap[sted] || '#000000'; // Fallback to black
-                        // Track coordinates for offsetting
+                        const lat = parseFloat(location.Latitude).toFixed(6);
+                        const lng = parseFloat(location.Longitude).toFixed(6);
                         const coordKey = `${lat},${lng}`;
-                        coordinateCounts[coordKey] = (coordinateCounts[coordKey] || 0) + 1;
-                        const index = coordinateCounts[coordKey] - 1;
-                        // Apply offset for overlapping markers
-                        const [offsetLat, offsetLng] = getOffsetCoordinates(lat, lng, index);
-                        const marker = L.marker([offsetLat, offsetLng], {
-                            title: `${beskrivelse} (Postnr: ${postnr})`,
+                        if (!coordGroups[coordKey]) {
+                            coordGroups[coordKey] = [];
+                        }
+                        coordGroups[coordKey].push(location);
+                    });
+                    // Create one marker per coordinate group
+                    Object.entries(coordGroups).forEach(([coordKey, locations]) => {
+                        const [lat, lng] = coordKey.split(',').map(parseFloat);
+                        const primarySted = locations[0].Sted; // Use first location's Sted for marker color
+                        const markerColor = colorMap[primarySted] || '#000000'; // Fallback to black
+                        // Build combined popup content
+                        let popupContent = '<b>Multiple Delivery Zones</b><br><ul>';
+                        locations.forEach(location => {
+                            const sted = location.Sted;
+                            const beskrivelse = location.Beskrivelse;
+                            const postnr = location.Postnr;
+                            const price = parseFloat(location['Pris (NOK)']);
+                            popupContent += `
+                                <li>
+                                    <b>${beskrivelse}</b><br>
+                                    Sted: ${sted}<br>
+                                    Postnr: ${postnr}<br>
+                                    Pris: ${price} NOK<br>
+                                    Latitude: ${lat}<br>
+                                    Longitude: ${lng}
+                                </li>
+                            `;
+                        });
+                        popupContent += '</ul>';
+                        const marker = L.marker([lat, lng], {
+                            title: `${locations.length} zone${locations.length > 1 ? 's' : ''} at this location`,
                             icon: L.divIcon({
                                 className: 'custom-marker',
                                 html: `<div style="background-color: ${markerColor}; width: 20px; height: 20px; border-radius: 50%; border: 2px solid #fff;"></div>`,
                                 iconSize: [20, 20]
                             })
-                        }).bindPopup(`
-                            <b>${beskrivelse}</b><br>
-                            Sted: ${sted}<br>
-                            Postnr: ${postnr}<br>
-                            Pris: ${price} NOK<br>
-                            Latitude: ${lat.toFixed(6)}<br>
-                            Longitude: ${lng.toFixed(6)}
-                        `);
-                        layers[sted].addLayer(marker);
-                        if (sted === 'all') {
+                        }).bindPopup(popupContent);
+                        // Add marker to relevant layers
+                        locations.forEach(location => {
+                            const sted = location.Sted;
                             layers[sted].addLayer(marker);
+                        });
+                        if (sted === 'all') {
+                            layers['all'].addLayer(marker);
                         }
                     });
                     // Add the selected layer to the map
@@ -228,13 +234,7 @@
                     }
                     // Auto-zoom to bounds of displayed markers
                     if (data.length > 0) {
-                        const bounds = L.latLngBounds(data.map(row => {
-                            const lat = parseFloat(row.Latitude);
-                            const lng = parseFloat(row.Longitude);
-                            const coordKey = `${lat},${lng}`;
-                            const index = (coordinateCounts[coordKey] || 1) - 1;
-                            return getOffsetCoordinates(lat, lng, index);
-                        }));
+                        const bounds = L.latLngBounds(data.map(row => [parseFloat(row.Latitude), parseFloat(row.Longitude)]));
                         map.fitBounds(bounds, { padding: [50, 50] });
                     } else {
                         console.warn('No valid coordinates found for selected layer. Check CSV data or Sted value.');
