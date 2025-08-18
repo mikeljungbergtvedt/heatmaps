@@ -1,4 +1,4 @@
-ID,Sted,Beskrivelse,Postnr,Pris (NOK),Latitude,Longitude
+IID,Sted,Beskrivelse,Postnr,Pris (NOK),Latitude,Longitude
 4,Skedsmo,Oslo 1,0001,690,59.9127,10.7461
 4,Skedsmo,Oslo 1,1295,690,59.9127,10.7461
 5,Skedsmo,Oslo 2,1300,690,59.8979,10.4906
