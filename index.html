@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="nb-NO">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Delivery Zones Map</title>
+    <title>Heatmaps</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
@@ -106,7 +106,7 @@
             }
         }
         .marker-cluster {
-            border-radius: 50%;
+            border-radius: 50%; /* Round shape */
         }
         .marker-cluster div {
             width: 40px;
@@ -115,7 +115,7 @@
             border-radius: 50%;
             font-size: 16px;
             font-weight: bold;
-            color: #000;
+            color: #000; /* Black numbers */
             text-align: center;
         }
     </style>
@@ -123,10 +123,10 @@
 <body>
     <header>
         <img src="logo.png" alt="Autoringen Logo" class="logo">
-        <h1>Delivery Zones Map</h1>
+        <h1>Heatmaps</h1>
     </header>
     <div class="nav-bar">
-        <a href="gire.html" class="active">Norge</a>
+        <a href="index.html" class="active">Norge</a>
         <a href="ski.html">Ski</a>
         <a href="skedsmo.html">Skedsmo</a>
         <a href="trondheim.html">Trondheim</a>
@@ -166,26 +166,28 @@
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             }).addTo(map);
 
-            Papa.parse('delivery_zones_geocoded.csv', {
+            Papa.parse('norge_sales_data.csv', {
                 download: true,
                 header: true,
                 complete: function(results) {
+                    // Group data by postal code and buyer
                     const pointsByPostnr = {};
-                    let totalLocations = 0;
+                    let totalCars = 0;
                     results.data
-                        .filter(row => (row.Latitude) && (row.Longitude) && 
-                            !isNaN(parseFloat(row.Latitude)) && 
-                            !isNaN(parseFloat(row.Longitude)))
+                        .filter(row => (row.Latitude || row.latitude) && (row.Longitude || row.longitude) && 
+                                       !isNaN(parseFloat(row.Latitude || row.latitude)) && 
+                                       !isNaN(parseFloat(row.Longitude || row.longitude)))
                         .forEach(row => {
-                            const postnr = row.Postnr || 'Unknown';
-                            const lat = parseFloat(row.Latitude);
-                            const lng = parseFloat(row.Longitude);
-                            const sted = row.Sted || 'Unknown Sted';
+                            const postnr = row.Postnr || row.cleaned_postal_code || 'Unknown';
+                            const lat = parseFloat(row.Latitude || row.latitude);
+                            const lng = parseFloat(row.Longitude || row.longitude);
+                            const buyer = row.Kjøper || 'Unknown Buyer';
                             if (!pointsByPostnr[postnr]) {
-                                pointsByPostnr[postnr] = { lat, lng, sted: sted, count: 0 };
+                                pointsByPostnr[postnr] = { lat, lng, buyers: {}, count: 0 };
                             }
-                            pointsByPostnr[postnr].count += 1;
-                            totalLocations += 1;
+                            pointsByPostnr[postnr].buyers[buyer] = (pointsByPostnr[postnr].buyers[buyer] || 0) + 1;
+                            pointsByPostnr[postnr].count += 1; // Count total cars per postal code
+                            totalCars += 1; // Track total cars
                         });
 
                     // Find max count for normalization
@@ -193,11 +195,11 @@
 
                     // Define custom color points (low to high)
                     const colorPoints = [
-                        { ratio: 0.0, color: [29, 72, 119] },  // #1d4877 - Dark Blue (low)
-                        { ratio: 0.25, color: [27, 138, 90] }, // #1b8a5a - Teal/Green
-                        { ratio: 0.5, color: [251, 176, 33] }, // #fbb021 - Yellow/Orange
+                        { ratio: 0.0, color: [29, 72, 119] },   // #1d4877 - Dark Blue (low)
+                        { ratio: 0.25, color: [27, 138, 90] },  // #1b8a5a - Teal/Green
+                        { ratio: 0.5, color: [251, 176, 33] },  // #fbb021 - Yellow/Orange
                         { ratio: 0.75, color: [246, 136, 56] }, // #f68838 - Orange
-                        { ratio: 1.0, color: [238, 62, 50] }   // #ee3e32 - Red (high)
+                        { ratio: 1.0, color: [238, 62, 50] }    // #ee3e32 - Red (high)
                     ];
 
                     // Interpolate color based on ratio
@@ -219,57 +221,55 @@
                     // Create heatmap points
                     const heatmapPoints = Object.values(pointsByPostnr).map(p => [p.lat, p.lng, p.count]);
 
-                    // Create cluster group for grouping pins
+                    // Create heatmap layer
+                    const heatLayer = L.heatLayer(heatmapPoints, { radius: 25 });
+
+                    // Create cluster group for grouping pins within ~20km
                     const markerLayer = L.markerClusterGroup({
-                        maxClusterRadius: 50,
+                        maxClusterRadius: 50, // Approximate 20km at zoom level 12; adjust as needed
                         iconCreateFunction: function(cluster) {
                             const markers = cluster.getAllChildMarkers();
-                            const totalCount = markers.reduce((sum, marker) => sum + (marker.options.count || 0), 0);
-                            const ratio = maxCount > 0 ? totalCount / maxCount : 0;
+                            const totalCarCount = markers.reduce((sum, marker) => sum + (marker.options.carCount || 0), 0);
+                            const ratio = maxCount > 0 ? totalCarCount / maxCount : 0;
                             const [r, g, b] = interpolateColor(ratio);
                             const color = `rgb(${r}, ${g}, ${b})`;
                             return L.divIcon({
-                                html: `<div style="background-color: ${color}; color: #000; font-weight: bold; font-size: 16px; line-height: 40px; width: 40px; height: 40px; border-radius: 50%; text-align: center;">${totalCount}</div>`,
+                                html: `<div style="background-color: ${color}; color: #000; font-weight: bold; font-size: 16px; line-height: 40px; width: 40px; height: 40px; border-radius: 50%; text-align: center;">${totalCarCount}</div>`,
                                 className: 'marker-cluster',
                                 iconSize: [40, 40]
                             });
                         }
                     });
 
-                    // Add individual markers with Sted-based color
-                    const colorMap = {
-                        'Skedsmo': '#FF0000', // Red
-                        'Ski': '#00FF00',    // Green
-                        'Bergen': '#0000FF', // Blue
-                        'Trondheim': '#FFA500', // Orange
-                        'Stavanger': '#800080' // Purple
-                    };
-
+                    // Add individual markers to the cluster group with car count
                     Object.entries(pointsByPostnr).forEach(([postnr, data]) => {
                         const ratio = maxCount > 0 ? data.count / maxCount : 0;
                         const [r, g, b] = interpolateColor(ratio);
-                        const baseColor = colorMap[data.sted] || '#000000'; // Fallback to black if Sted not in map
+                        const color = `rgb(${r}, ${g}, ${b})`;
+
+                        const buyerList = Object.entries(data.buyers)
+                            .map(([buyer, count]) => `${buyer} (${count} car${count > 1 ? 's' : ''})`)
+                            .join('<br>');
                         const popupContent = `
                             <b>Postal Code:</b> ${postnr}<br>
-                            <b>Sted:</b> ${data.sted}<br>
-                            <b>Total Locations:</b> ${data.count}<br>
+                            <b>Total Cars Sold:</b> ${data.count}<br>
+                            <b>Buyers:</b><br>${buyerList}
                         `;
                         L.marker([data.lat, data.lng], {
                             icon: L.divIcon({
-                                html: `<div style="background-color: ${baseColor}; width: 10px; height: 10px; border-radius: 50%; border: 2px solid #fff;"></div>`,
-                                className: 'custom-marker',
-                                iconSize: [10, 10]
+                                html: `<div style="background-color: ${color}; color: #000; font-weight: bold; font-size: 16px; line-height: 40px; width: 40px; height: 40px; border-radius: 50%; text-align: center;">${data.count}</div>`,
+                                className: 'marker-cluster',
+                                iconSize: [40, 40]
                             }),
-                            count: data.count
+                            carCount: data.count // Store car count for clustering
                         })
                         .bindPopup(popupContent)
                         .addTo(markerLayer);
                     });
 
-                    console.log(`Total locations processed: ${totalLocations}`);
+                    console.log(`Total cars processed: ${totalCars}`); // Debug total cars
 
                     // Add layers to map
-                    const heatLayer = L.heatLayer(heatmapPoints, { radius: 25 });
                     heatLayer.addTo(map);
                     markerLayer.addTo(map);
 
@@ -286,11 +286,11 @@
                         const bounds = L.latLngBounds(heatmapPoints.map(p => [p[0], p[1]]));
                         map.fitBounds(bounds, { padding: [50, 50] });
                     } else {
-                        console.warn('No valid coordinates found in CSV. Check file path or column names.');
+                        console.warn('No valid coordinates found in CSV. Check file path or column names (Latitude/Longitude or latitude/longitude). Data:', results.data);
                     }
                 },
                 error: function(error) {
-                    console.error('Error loading CSV: Check if delivery_zones_geocoded.csv exists and is accessible:', error);
+                    console.error('Error loading CSV: Check if norge_sales_data.csv exists and is accessible:', error);
                 }
             });
         } else {
