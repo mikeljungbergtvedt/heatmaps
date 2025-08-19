@@ -209,6 +209,7 @@
                     Object.entries(coordGroups).forEach(([coordKey, locations]) => {
                         const [lat, lng] = coordKey.split(',').map(parseFloat);
                         const primarySted = locations[0].Sted; // Use for color in 'all' mode
+                        const price = parseFloat(locations[0]['Pris (NOK)']); // Use first price to avoid sum bug
                         // Calculate marker color and display value
                         let markerColor, displayValue;
                         if (sted === 'all') {
@@ -216,16 +217,15 @@
                             const clusterCount = locations.length;
                             displayValue = clusterCount > 1 ? clusterCount : '';
                         } else {
-                            // Sum prices for clustered markers, use heatmap color
-                            const totalPrice = locations.reduce((sum, loc) => sum + parseFloat(loc['Pris (NOK)']), 0);
-                            const minPrice = 490; // From delivery_zones.csv
-                            const maxPrice = 990; // From delivery_zones.csv
-                            const ratio = (totalPrice - minPrice) / (maxPrice - minPrice);
+                            // Use first price for color and display
+                            const minPrice = 490;
+                            const maxPrice = 990;
+                            const ratio = (price - minPrice) / (maxPrice - minPrice);
                             markerColor = interpolateColor(ratio);
-                            displayValue = totalPrice.toFixed(0);
+                            displayValue = price.toFixed(0);
                         }
                         // Build combined popup content
-                        let popupContent = '<b>Multiple Delivery Zones</b><br><ul>';
+                        let popupContent = locations.length > 1 ? '<b>Multiple Delivery Zones</b><br><ul>' : '<b>Delivery Zone</b><br><ul>';
                         locations.forEach(location => {
                             const sted = location.Sted;
                             const beskrivelse = location.Beskrivelse;
