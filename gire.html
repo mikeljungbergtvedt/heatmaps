@@ -82,6 +82,7 @@
             text-align: center;
             border: 2px solid #fff;
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            background-color: inherit; /* Ensure background-color is applied */
         }
         @media (max-width: 600px) {
             .nav-bar a {
@@ -152,18 +153,19 @@
         ];
         // Interpolate color based on ratio
         function interpolateColor(ratio) {
-            if (ratio <= 0) return colorPoints[0].color;
-            if (ratio >= 1) return colorPoints[colorPoints.length - 1].color;
+            const clampedRatio = Math.max(0, Math.min(1, ratio)); // Clamp to [0, 1]
+            if (clampedRatio <= 0) return `rgb(${colorPoints[0].color.join(',')})`;
+            if (clampedRatio >= 1) return `rgb(${colorPoints[colorPoints.length - 1].color.join(',')})`;
             for (let i = 0; i < colorPoints.length - 1; i++) {
-                if (ratio <= colorPoints[i + 1].ratio) {
-                    const t = (ratio - colorPoints[i].ratio) / (colorPoints[i + 1].ratio - colorPoints[i].ratio);
+                if (clampedRatio <= colorPoints[i + 1].ratio) {
+                    const t = (clampedRatio - colorPoints[i].ratio) / (colorPoints[i + 1].ratio - colorPoints[i].ratio);
                     const r = Math.round(colorPoints[i].color[0] + t * (colorPoints[i + 1].color[0] - colorPoints[i].color[0]));
                     const g = Math.round(colorPoints[i].color[1] + t * (colorPoints[i + 1].color[1] - colorPoints[i].color[1]));
                     const b = Math.round(colorPoints[i].color[2] + t * (colorPoints[i + 1].color[2] - colorPoints[i].color[2]));
-                    return `rgb(${r}, ${g}, ${b})`;
+                    return `rgb(${r},${g},${b})`;
                 }
             }
-            return colorPoints[colorPoints.length - 1].color;
+            return `rgb(${colorPoints[colorPoints.length - 1].color.join(',')})`;
         }
         const layers = {
             'all': L.layerGroup(),
@@ -209,7 +211,7 @@
                     Object.entries(coordGroups).forEach(([coordKey, locations]) => {
                         const [lat, lng] = coordKey.split(',').map(parseFloat);
                         const primarySted = locations[0].Sted; // Use for color in 'all' mode
-                        const price = parseFloat(locations[0]['Pris (NOK)']); // Use first price to avoid sum bug
+                        const price = parseFloat(locations[0]['Pris (NOK)']) || 490; // Fallback to 490 if invalid
                         // Calculate marker color and display value
                         let markerColor, displayValue;
                         if (sted === 'all') {
@@ -223,14 +225,15 @@
                             const ratio = (price - minPrice) / (maxPrice - minPrice);
                             markerColor = interpolateColor(ratio);
                             displayValue = price.toFixed(0);
+                            console.log(`Marker for ${primarySted}, Postnr: ${locations[0].Postnr}, Price: ${price}, Ratio: ${ratio}, Color: ${markerColor}`);
                         }
-                        // Build combined popup content
+                        // Build popup content
                         let popupContent = locations.length > 1 ? '<b>Multiple Delivery Zones</b><br><ul>' : '<b>Delivery Zone</b><br><ul>';
                         locations.forEach(location => {
                             const sted = location.Sted;
                             const beskrivelse = location.Beskrivelse;
                             const postnr = location.Postnr;
-                            const price = parseFloat(location['Pris (NOK)']);
+                            const price = parseFloat(location['Pris (NOK)']) || 'N/A';
                             popupContent += `
                                 <li>
                                     <b>${beskrivelse}</b><br>
