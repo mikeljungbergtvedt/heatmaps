@@ -142,6 +142,29 @@
             'Trondheim': '#f68838', // Orange
             'Ski': '#ee3e32' // Red
         };
+        // Heatmap color points for price-based coloring
+        const colorPoints = [
+            { ratio: 0.0, color: [29, 72, 119] }, // #1d4877 - Blue (low, 490 NOK)
+            { ratio: 0.25, color: [27, 138, 90] }, // #1b8a5a - Teal/Green
+            { ratio: 0.5, color: [251, 176, 33] }, // #fbb021 - Yellow/Orange
+            { ratio: 0.75, color: [246, 136, 56] }, // #f68838 - Orange
+            { ratio: 1.0, color: [238, 62, 50] } // #ee3e32 - Red (high, 990 NOK)
+        ];
+        // Interpolate color based on ratio
+        function interpolateColor(ratio) {
+            if (ratio <= 0) return colorPoints[0].color;
+            if (ratio >= 1) return colorPoints[colorPoints.length - 1].color;
+            for (let i = 0; i < colorPoints.length - 1; i++) {
+                if (ratio <= colorPoints[i + 1].ratio) {
+                    const t = (ratio - colorPoints[i].ratio) / (colorPoints[i + 1].ratio - colorPoints[i].ratio);
+                    const r = Math.round(colorPoints[i].color[0] + t * (colorPoints[i + 1].color[0] - colorPoints[i].color[0]));
+                    const g = Math.round(colorPoints[i].color[1] + t * (colorPoints[i + 1].color[1] - colorPoints[i].color[1]));
+                    const b = Math.round(colorPoints[i].color[2] + t * (colorPoints[i + 1].color[2] - colorPoints[i].color[2]));
+                    return `rgb(${r}, ${g}, ${b})`;
+                }
+            }
+            return colorPoints[colorPoints.length - 1].color;
+        }
         const layers = {
             'all': L.layerGroup(),
             'Skedsmo': L.layerGroup(),
@@ -185,8 +208,22 @@
                     // Create one marker per coordinate group
                     Object.entries(coordGroups).forEach(([coordKey, locations]) => {
                         const [lat, lng] = coordKey.split(',').map(parseFloat);
-                        const primarySted = locations[0].Sted; // Use first location's Sted for marker color
-                        const markerColor = colorMap[primarySted] || '#000000'; // Fallback to black
+                        const primarySted = locations[0].Sted; // Use for color in 'all' mode
+                        // Calculate marker color and display value
+                        let markerColor, displayValue;
+                        if (sted === 'all') {
+                            markerColor = colorMap[primarySted] || '#000000'; // Fixed color
+                            const clusterCount = locations.length;
+                            displayValue = clusterCount > 1 ? clusterCount : '';
+                        } else {
+                            // Sum prices for clustered markers, use heatmap color
+                            const totalPrice = locations.reduce((sum, loc) => sum + parseFloat(loc['Pris (NOK)']), 0);
+                            const minPrice = 490; // From delivery_zones.csv
+                            const maxPrice = 990; // From delivery_zones.csv
+                            const ratio = (totalPrice - minPrice) / (maxPrice - minPrice);
+                            markerColor = interpolateColor(ratio);
+                            displayValue = totalPrice.toFixed(0);
+                        }
                         // Build combined popup content
                         let popupContent = '<b>Multiple Delivery Zones</b><br><ul>';
                         locations.forEach(location => {
@@ -206,20 +243,14 @@
                             `;
                         });
                         popupContent += '</ul>';
-                        // Add cluster count to marker only if >1
-                        const clusterCount = locations.length;
-                        let markerHtml = `<div style="background-color: ${markerColor}; width: 30px; height: 30px; border-radius: 50%; text-align: center; line-height: 30px; font-size: 14px; font-weight: bold; color: #000;">`;
-                        if (clusterCount > 1) {
-                            markerHtml += clusterCount;
-                        }
-                        markerHtml += `</div>`;
+                        // Create marker
                         const marker = L.marker([lat, lng], {
-                            title: `${clusterCount} zone${clusterCount > 1 ? 's' : ''} at this location`,
+                            title: sted === 'all' ? `${locations.length} zone${locations.length > 1 ? 's' : ''} at this location` : `Price: ${displayValue} NOK`,
                             icon: L.divIcon({
                                 className: 'custom-marker',
-                                html: markerHtml,
+                                html: `<div style="background-color: ${markerColor}; width: 30px; height: 30px; border-radius: 50%; text-align: center; line-height: 30px; font-size: 14px; font-weight: bold; color: #000; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${displayValue}</div>`,
                                 iconSize: [30, 30],
-                                iconAnchor: [15, 30] // Anchor at bottom center to prevent shifting on zoom
+                                iconAnchor: [15, 30]
                             })
                         }).bindPopup(popupContent);
                         // Add marker to relevant layers
@@ -258,7 +289,7 @@
                         console.warn('No valid coordinates found for selected layer. Setting default view.');
                         map.setView([64.0, 10.0], 5); // Default to Norway center
                     }
-                    map.invalidateSize(); // Force redraw to fix any zoom issues
+                    map.invalidateSize(); // Force redraw to fix zoom issues
                 },
                 error: function(error) {
                     console.error('Error loading CSV: Check if delivery_zones_geocoded.csv exists and is accessible:', error);
