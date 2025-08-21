@@ -84,6 +84,12 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
             background-color: inherit; /* Ensure background-color is applied */
         }
+        .error-message {
+            text-align: center;
+            color: red;
+            padding: 10px;
+            display: none;
+        }
         @media (max-width: 600px) {
             .nav-bar a {
                 display: block;
@@ -123,6 +129,7 @@
     <div class="map-container">
         <div id="map"></div>
     </div>
+    <div class="error-message" id="errorMessage"></div>
     <footer>
         <p>Powered by <a href="https://www.openstreetmap.org" target="_blank">OpenStreetMap</a> | <a href="https://www.autoringen.no" target="_blank">Autoringen</a></p>
     </footer>
@@ -136,7 +143,6 @@
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         }).addTo(map);
-
         const layers = {
             'all': L.layerGroup(),
             'Skedsmo': L.layerGroup(),
@@ -145,7 +151,6 @@
             'Trondheim': L.layerGroup(),
             'Ski': L.layerGroup()
         };
-
         // Unique colors for regions in 'all' mode
         const regionColors = {
             'Bergen': '#1b8a5a', // Teal/Green
@@ -154,7 +159,6 @@
             'Skedsmo': '#1d4877', // Dark Blue
             'Ski': '#ee3e32' // Red
         };
-
         // Heatmap color function for region-specific mode
         const minPrice = 578;
         const maxPrice = 990;
@@ -163,7 +167,6 @@
             const hue = (1 - ratio) * 240; // Blue (240) to Red (0)
             return `hsl(${hue}, 70%, 50%)`;
         }
-
         function toggleLayer(sted) {
             // Clear all layers and remove active class from buttons
             Object.keys(layers).forEach(key => {
@@ -173,7 +176,7 @@
             // Activate the selected button
             document.querySelector(`.nav-bar a[onclick="toggleLayer('${sted}')"]`).classList.add('active');
             // Load markers based on the selected layer
-            Papa.parse('reconciled_postal_ranges_with_coords.csv', {
+            Papa.parse('./reconciled_postal_ranges_with_coords.csv', {
                 download: true,
                 header: true,
                 complete: function(results) {
@@ -191,36 +194,40 @@
                         const startLat = parseFloat(row.StartLatitude).toFixed(6);
                         const startLng = parseFloat(row.StartLongitude).toFixed(6);
                         const startKey = `${startLat},${startLng}`;
-                        if (!coordGroups[startKey]) {
+                        if (!coordGroups[startKey] && sted === 'all') {
                             coordGroups[startKey] = [];
                         }
-                        coordGroups[startKey].push(row);
+                        if (sted === 'all') coordGroups[startKey].push(row);
                         // End coordinate
                         const endLat = parseFloat(row.EndLatitude).toFixed(6);
                         const endLng = parseFloat(row.EndLongitude).toFixed(6);
                         const endKey = `${endLat},${endLng}`;
-                        if (!coordGroups[endKey]) {
+                        if (!coordGroups[endKey] && sted === 'all') {
                             coordGroups[endKey] = [];
                         }
-                        coordGroups[endKey].push(row);
+                        if (sted === 'all') coordGroups[endKey].push(row);
+                        // For region tabs, add all start and end coordinates
+                        if (sted !== 'all') {
+                            if (!coordGroups[startKey]) coordGroups[startKey] = [];
+                            coordGroups[startKey].push(row);
+                            if (!coordGroups[endKey]) coordGroups[endKey] = [];
+                            coordGroups[endKey].push(row);
+                        }
                     });
                     console.log(`Created ${Object.keys(coordGroups).length} coordinate groups`);
-                    // Create one marker per coordinate group
+                    // Create markers
                     Object.entries(coordGroups).forEach(([coordKey, rows]) => {
                         const [lat, lng] = coordKey.split(',').map(parseFloat);
-                        const primaryRegion = rows[0].Region; // Use for color in 'all' mode
-                        const avgPrice = rows.reduce((sum, row) => sum + (parseFloat(row['Suggested Autoringen Price']) || 0), 0) / rows.length;
-                        // Calculate marker color and display value
+                        const primaryRegion = rows[0].Region;
+                        const price = parseFloat(rows[0]['Suggested Autoringen Price']) || 0;
                         let markerColor, displayValue;
                         if (sted === 'all') {
-                            markerColor = regionColors[primaryRegion] || '#000000'; // Fixed color
+                            markerColor = regionColors[primaryRegion] || '#000000';
                             displayValue = rows.length > 1 ? rows.length : '';
                         } else {
-                            markerColor = getHeatmapColor(avgPrice);
-                            displayValue = avgPrice.toFixed(0);
-                            console.log(`Marker for ${primaryRegion}, Avg Price: ${avgPrice}, Color: ${markerColor}`);
+                            markerColor = getHeatmapColor(price);
+                            displayValue = price.toFixed(0);
                         }
-                        // Build popup content
                         let popupContent = rows.length > 1 ? '<b>Multiple Delivery Zones</b><br><ul>' : '<b>Delivery Zone</b><br><ul>';
                         rows.forEach(row => {
                             popupContent += `
@@ -237,10 +244,9 @@
                                 </li>
                             `;
                         });
-                        popupContent += '</ul><b>Avg Suggested Price:</b> ${avgPrice.toFixed(2)}';
-                        // Create marker
+                        popupContent += '</ul>';
                         const marker = L.marker([lat, lng], {
-                            title: sted === 'all' ? `${rows.length} zone${rows.length > 1 ? 's' : ''} at this location` : `Avg Price: ${displayValue} NOK`,
+                            title: sted === 'all' ? `${rows.length} zone${rows.length > 1 ? 's' : ''} at this location` : `Price: ${displayValue} NOK`,
                             icon: L.divIcon({
                                 className: 'custom-marker',
                                 html: `<div style="background-color: ${markerColor};">${displayValue}</div>`,
@@ -248,7 +254,6 @@
                                 iconAnchor: [15, 30]
                             })
                         }).bindPopup(popupContent);
-                        // Add marker to the selected layer
                         layers[sted].addLayer(marker);
                     });
                     // Add the selected layer to the map
@@ -268,17 +273,20 @@
                             map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
                         } else {
                             console.warn('Invalid bounds, setting default view');
-                            map.setView([64.0, 10.0], 5); // Default to Norway center
+                            map.setView([64.0, 10.0], 5);
                         }
                     } else {
                         console.warn('No valid coordinates found for selected layer. Setting default view.');
-                        map.setView([64.0, 10.0], 5); // Default to Norway center
+                        map.setView([64.0, 10.0], 5);
                     }
-                    map.invalidateSize(); // Force redraw to fix zoom issues
+                    map.invalidateSize();
                 },
                 error: function(error) {
-                    console.error('Error loading CSV: Check if reconciled_postal_ranges_with_coords.csv exists and is accessible:', error);
-                    map.setView([64.0, 10.0], 5); // Default to Norway center
+                    console.error('Error loading CSV:', error);
+                    const errorMessage = document.getElementById('errorMessage');
+                    errorMessage.textContent = 'Error loading reconciled_postal_ranges_with_coords.csv. Check file path and accessibility.';
+                    errorMessage.style.display = 'block';
+                    map.setView([64.0, 10.0], 5);
                 }
             });
         }
