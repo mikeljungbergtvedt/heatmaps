@@ -6,6 +6,8 @@
     <title>Delivery Zones Map</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
     <style>
         body {
             font-family: 'Roboto', sans-serif;
@@ -127,6 +129,7 @@
         <p>Powered by <a href="https://www.openstreetmap.org" target="_blank">OpenStreetMap</a> | <a href="https://www.autoringen.no" target="_blank">Autoringen</a></p>
     </footer>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
     <script>
         const map = L.map('map', {
@@ -136,45 +139,30 @@
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         }).addTo(map);
-        const colorMap = {
-            'Skedsmo': '#1d4877', // Dark Blue
+        const layers = {
+            'all': L.markerClusterGroup(),
+            'Skedsmo': L.markerClusterGroup(),
+            'Bergen': L.markerClusterGroup(),
+            'Stavanger': L.markerClusterGroup(),
+            'Trondheim': L.markerClusterGroup(),
+            'Ski': L.markerClusterGroup()
+        };
+        // Unique colors for regions in 'all' mode
+        const regionColors = {
             'Bergen': '#1b8a5a', // Teal/Green
-            'Stavanger': '#fbb021', // Yellow/Orange
             'Trondheim': '#f68838', // Orange
+            'Stavanger': '#fbb021', // Yellow/Orange
+            'Skedsmo': '#1d4877', // Dark Blue
             'Ski': '#ee3e32' // Red
         };
-        // Heatmap color points for price-based coloring
-        const colorPoints = [
-            { ratio: 0.0, color: [29, 72, 119] }, // #1d4877 - Blue (low, 490 NOK)
-            { ratio: 0.25, color: [27, 138, 90] }, // #1b8a5a - Teal/Green
-            { ratio: 0.5, color: [251, 176, 33] }, // #fbb021 - Yellow/Orange
-            { ratio: 0.75, color: [246, 136, 56] }, // #f68838 - Orange
-            { ratio: 1.0, color: [238, 62, 50] } // #ee3e32 - Red (high, 990 NOK)
-        ];
-        // Interpolate color based on ratio
-        function interpolateColor(ratio) {
-            const clampedRatio = Math.max(0, Math.min(1, ratio)); // Clamp to [0, 1]
-            if (clampedRatio <= 0) return `rgb(${colorPoints[0].color.join(',')})`;
-            if (clampedRatio >= 1) return `rgb(${colorPoints[colorPoints.length - 1].color.join(',')})`;
-            for (let i = 0; i < colorPoints.length - 1; i++) {
-                if (clampedRatio <= colorPoints[i + 1].ratio) {
-                    const t = (clampedRatio - colorPoints[i].ratio) / (colorPoints[i + 1].ratio - colorPoints[i].ratio);
-                    const r = Math.round(colorPoints[i].color[0] + t * (colorPoints[i + 1].color[0] - colorPoints[i].color[0]));
-                    const g = Math.round(colorPoints[i].color[1] + t * (colorPoints[i + 1].color[1] - colorPoints[i].color[1]));
-                    const b = Math.round(colorPoints[i].color[2] + t * (colorPoints[i + 1].color[2] - colorPoints[i].color[2]));
-                    return `rgb(${r},${g},${b})`;
-                }
-            }
-            return `rgb(${colorPoints[colorPoints.length - 1].color.join(',')})`;
+        // Heatmap color function for region-specific mode
+        const minPrice = 578;
+        const maxPrice = 990;
+        function getHeatmapColor(price) {
+            const ratio = (price - minPrice) / (maxPrice - minPrice);
+            const hue = (1 - ratio) * 240; // Blue (240) to Red (0)
+            return `hsl(${hue}, 70%, 50%)`;
         }
-        const layers = {
-            'all': L.layerGroup(),
-            'Skedsmo': L.layerGroup(),
-            'Bergen': L.layerGroup(),
-            'Stavanger': L.layerGroup(),
-            'Trondheim': L.layerGroup(),
-            'Ski': L.layerGroup()
-        };
         function toggleLayer(sted) {
             // Clear all layers and remove active class from buttons
             Object.keys(layers).forEach(key => {
@@ -184,103 +172,93 @@
             // Activate the selected button
             document.querySelector(`.nav-bar a[onclick="toggleLayer('${sted}')"]`).classList.add('active');
             // Load markers based on the selected layer
-            Papa.parse('delivery_zones_geocoded.csv', {
+            Papa.parse('reconciled_postal_ranges_with_coords.csv', {
                 download: true,
                 header: true,
                 complete: function(results) {
                     const data = results.data.filter(row =>
-                        row.Latitude && row.Longitude &&
-                        !isNaN(parseFloat(row.Latitude)) &&
-                        !isNaN(parseFloat(row.Longitude)) &&
-                        (sted === 'all' || row.Sted === sted)
+                        row.StartLatitude && row.StartLongitude && row.EndLatitude && row.EndLongitude &&
+                        !isNaN(parseFloat(row.StartLatitude)) && !isNaN(parseFloat(row.StartLongitude)) &&
+                        !isNaN(parseFloat(row.EndLatitude)) && !isNaN(parseFloat(row.EndLongitude)) &&
+                        (sted === 'all' || row.Region === sted)
                     );
-                    console.log(`Loaded ${data.length} valid locations for ${sted}`);
-                    // Group locations by identical coordinates
+                    console.log(`Loaded ${data.length} valid rows for ${sted}`);
+                    // Group locations by coordinate pairs
                     const coordGroups = {};
-                    data.forEach(location => {
-                        const lat = parseFloat(location.Latitude).toFixed(6);
-                        const lng = parseFloat(location.Longitude).toFixed(6);
-                        const coordKey = `${lat},${lng}`;
-                        if (!coordGroups[coordKey]) {
-                            coordGroups[coordKey] = [];
+                    data.forEach(row => {
+                        // Start coordinate
+                        const startLat = parseFloat(row.StartLatitude).toFixed(6);
+                        const startLng = parseFloat(row.StartLongitude).toFixed(6);
+                        const startKey = `${startLat},${startLng}`;
+                        if (!coordGroups[startKey]) {
+                            coordGroups[startKey] = [];
                         }
-                        coordGroups[coordKey].push(location);
+                        coordGroups[startKey].push(row);
+                        // End coordinate
+                        const endLat = parseFloat(row.EndLatitude).toFixed(6);
+                        const endLng = parseFloat(row.EndLongitude).toFixed(6);
+                        const endKey = `${endLat},${endLng}`;
+                        if (!coordGroups[endKey]) {
+                            coordGroups[endKey] = [];
+                        }
+                        coordGroups[endKey].push(row);
                     });
                     console.log(`Created ${Object.keys(coordGroups).length} coordinate groups`);
                     // Create one marker per coordinate group
-                    Object.entries(coordGroups).forEach(([coordKey, locations]) => {
+                    Object.entries(coordGroups).forEach(([coordKey, rows]) => {
                         const [lat, lng] = coordKey.split(',').map(parseFloat);
-                        const primarySted = locations[0].Sted; // Use for color in 'all' mode
-                        const price = parseFloat(locations[0]['Pris (NOK)']) || 490; // Fallback to 490 if invalid
+                        const primaryRegion = rows[0].Region; // Use for color in 'all' mode
+                        const avgPrice = rows.reduce((sum, row) => sum + (parseFloat(row['Suggested Autoringen Price']) || 0), 0) / rows.length;
                         // Calculate marker color and display value
                         let markerColor, displayValue;
                         if (sted === 'all') {
-                            markerColor = colorMap[primarySted] || '#000000'; // Fixed color
-                            const clusterCount = locations.length;
-                            displayValue = clusterCount > 1 ? clusterCount : '';
+                            markerColor = regionColors[primaryRegion] || '#000000'; // Fixed color
+                            displayValue = rows.length > 1 ? rows.length : '';
                         } else {
-                            // Use first price for color and display
-                            const minPrice = 490;
-                            const maxPrice = 990;
-                            const ratio = (price - minPrice) / (maxPrice - minPrice);
-                            markerColor = interpolateColor(ratio);
-                            displayValue = price.toFixed(0);
-                            console.log(`Marker for ${primarySted}, Postnr: ${locations[0].Postnr}, Price: ${price}, Ratio: ${ratio}, Color: ${markerColor}`);
+                            markerColor = getHeatmapColor(avgPrice);
+                            displayValue = avgPrice.toFixed(0);
+                            console.log(`Marker for ${primaryRegion}, Avg Price: ${avgPrice}, Color: ${markerColor}`);
                         }
                         // Build popup content
-                        let popupContent = locations.length > 1 ? '<b>Multiple Delivery Zones</b><br><ul>' : '<b>Delivery Zone</b><br><ul>';
-                        locations.forEach(location => {
-                            const sted = location.Sted;
-                            const beskrivelse = location.Beskrivelse;
-                            const postnr = location.Postnr;
-                            const price = parseFloat(location['Pris (NOK)']) || 'N/A';
+                        let popupContent = rows.length > 1 ? '<b>Multiple Delivery Zones</b><br><ul>' : '<b>Delivery Zone</b><br><ul>';
+                        rows.forEach(row => {
                             popupContent += `
                                 <li>
-                                    <b>${beskrivelse}</b><br>
-                                    Sted: ${sted}<br>
-                                    Postnr: ${postnr}<br>
-                                    Pris: ${price} NOK<br>
+                                    <b>${row.SubRegion}</b><br>
+                                    Region: ${row.Region}<br>
+                                    Range: ${row.RangeStart}-${row.RangeEnd}<br>
+                                    Gire Price: ${row['Gire Price'] || 'N/A'}<br>
+                                    Autoringen Price: ${row['Autoringen Price'] || 'N/A'}<br>
+                                    Suggested Autoringen Price: ${row['Suggested Autoringen Price'] || 'N/A'}<br>
+                                    Distance: ${row.Distance_km} km<br>
                                     Latitude: ${lat}<br>
                                     Longitude: ${lng}
                                 </li>
                             `;
                         });
-                        popupContent += '</ul>';
+                        popupContent += '</ul><b>Avg Suggested Price:</b> ${avgPrice.toFixed(2)}';
                         // Create marker
                         const marker = L.marker([lat, lng], {
-                            title: sted === 'all' ? `${locations.length} zone${locations.length > 1 ? 's' : ''} at this location` : `Price: ${displayValue} NOK`,
+                            title: sted === 'all' ? `${rows.length} zone${rows.length > 1 ? 's' : ''} at this location` : `Avg Price: ${displayValue} NOK`,
                             icon: L.divIcon({
                                 className: 'custom-marker',
-                                html: `<div style="background-color: ${markerColor}; width: 30px; height: 30px; border-radius: 50%; text-align: center; line-height: 30px; font-size: 14px; font-weight: bold; color: #000; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${displayValue}</div>`,
+                                html: `<div style="background-color: ${markerColor};">${displayValue}</div>`,
                                 iconSize: [30, 30],
                                 iconAnchor: [15, 30]
                             })
                         }).bindPopup(popupContent);
-                        // Add marker to relevant layers
-                        locations.forEach(location => {
-                            const sted = location.Sted;
-                            layers[sted].addLayer(marker);
-                        });
-                        if (sted === 'all') {
-                            layers['all'].addLayer(marker);
-                        }
+                        // Add marker to the selected layer
+                        layers[sted].addLayer(marker);
                     });
                     // Add the selected layer to the map
-                    if (sted === 'all') {
-                        Object.values(layers).forEach(layer => layer.addTo(map));
-                    } else {
-                        layers[sted].addTo(map);
-                    }
+                    layers[sted].addTo(map);
                     // Auto-zoom to bounds of displayed markers
                     if (data.length > 0) {
-                        const bounds = L.latLngBounds(data.map(row => {
-                            const lat = parseFloat(row.Latitude);
-                            const lng = parseFloat(row.Longitude);
-                            if (!isNaN(lat) && !isNaN(lng)) {
-                                return [lat, lng];
-                            }
-                            return null;
-                        }).filter(coord => coord !== null));
+                        const bounds = L.latLngBounds([]);
+                        data.forEach(row => {
+                            bounds.extend([parseFloat(row.StartLatitude), parseFloat(row.StartLongitude)]);
+                            bounds.extend([parseFloat(row.EndLatitude), parseFloat(row.EndLongitude)]);
+                        });
                         if (bounds.isValid()) {
                             console.log('Zooming to bounds:', bounds.toBBoxString());
                             map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
@@ -295,7 +273,7 @@
                     map.invalidateSize(); // Force redraw to fix zoom issues
                 },
                 error: function(error) {
-                    console.error('Error loading CSV: Check if delivery_zones_geocoded.csv exists and is accessible:', error);
+                    console.error('Error loading CSV: Check if reconciled_postal_ranges_with_coords.csv exists and is accessible:', error);
                     map.setView([64.0, 10.0], 5); // Default to Norway center
                 }
             });
