@@ -78,11 +78,11 @@
             border-radius: 50%;
             font-size: 14px;
             font-weight: bold;
-            color: #000;
+            color: #fff; /* Changed to white */
             text-align: center;
             border: 2px solid #fff;
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-            background-color: inherit; /* Ensure background-color is applied */
+            background-color: inherit;
         }
         .error-message {
             text-align: center;
@@ -151,7 +151,6 @@
             'Trondheim': L.layerGroup(),
             'Ski': L.layerGroup()
         };
-        // Unique colors for regions in 'all' mode
         const regionColors = {
             'Bergen': '#1b8a5a', // Teal/Green
             'Trondheim': '#f68838', // Orange
@@ -159,7 +158,6 @@
             'Skedsmo': '#1d4877', // Dark Blue
             'Ski': '#ee3e32' // Red
         };
-        // Heatmap color function for region-specific mode
         const minPrice = 578;
         const maxPrice = 990;
         function getHeatmapColor(price) {
@@ -168,14 +166,11 @@
             return `hsl(${hue}, 70%, 50%)`;
         }
         function toggleLayer(sted) {
-            // Clear all layers and remove active class from buttons
             Object.keys(layers).forEach(key => {
                 layers[key].clearLayers();
                 document.querySelectorAll('.nav-bar a').forEach(a => a.classList.remove('active'));
             });
-            // Activate the selected button
             document.querySelector(`.nav-bar a[onclick="toggleLayer('${sted}')"]`).classList.add('active');
-            // Load markers based on the selected layer
             Papa.parse('./reconciled_postal_ranges_with_coords.csv', {
                 download: true,
                 header: true,
@@ -186,51 +181,66 @@
                         !isNaN(parseFloat(row.EndLatitude)) && !isNaN(parseFloat(row.EndLongitude)) &&
                         (sted === 'all' || row.Region === sted)
                     );
-                    console.log(`Loaded ${data.length} valid rows for ${sted}`);
-                    // Group locations by coordinate pairs
-                    const coordGroups = {};
-                    data.forEach(row => {
-                        // Start coordinate
-                        const startLat = parseFloat(row.StartLatitude).toFixed(6);
-                        const startLng = parseFloat(row.StartLongitude).toFixed(6);
-                        const startKey = `${startLat},${startLng}`;
-                        if (!coordGroups[startKey] && sted === 'all') {
-                            coordGroups[startKey] = [];
-                        }
-                        if (sted === 'all') coordGroups[startKey].push(row);
-                        // End coordinate
-                        const endLat = parseFloat(row.EndLatitude).toFixed(6);
-                        const endLng = parseFloat(row.EndLongitude).toFixed(6);
-                        const endKey = `${endLat},${endLng}`;
-                        if (!coordGroups[endKey] && sted === 'all') {
-                            coordGroups[endKey] = [];
-                        }
-                        if (sted === 'all') coordGroups[endKey].push(row);
-                        // For region tabs, add all start and end coordinates
-                        if (sted !== 'all') {
-                            if (!coordGroups[startKey]) coordGroups[startKey] = [];
-                            coordGroups[startKey].push(row);
-                            if (!coordGroups[endKey]) coordGroups[endKey] = [];
-                            coordGroups[endKey].push(row);
-                        }
-                    });
-                    console.log(`Created ${Object.keys(coordGroups).length} coordinate groups`);
-                    // Create markers
-                    Object.entries(coordGroups).forEach(([coordKey, rows]) => {
-                        const [lat, lng] = coordKey.split(',').map(parseFloat);
-                        const primaryRegion = rows[0].Region;
-                        const price = parseFloat(rows[0]['Suggested Autoringen Price']) || 0;
-                        let markerColor, displayValue;
-                        if (sted === 'all') {
-                            markerColor = regionColors[primaryRegion] || '#000000';
-                            displayValue = rows.length > 1 ? rows.length : '';
-                        } else {
-                            markerColor = getHeatmapColor(price);
-                            displayValue = price.toFixed(0);
-                        }
-                        let popupContent = rows.length > 1 ? '<b>Multiple Delivery Zones</b><br><ul>' : '<b>Delivery Zone</b><br><ul>';
-                        rows.forEach(row => {
-                            popupContent += `
+                    console.log(`Loaded ${data.length} valid rows for ${sted}:`, data);
+                    // Handle markers based on tab
+                    if (sted === 'all') {
+                        // Unique markers for Alle tab
+                        const uniqueCoords = new Set();
+                        data.forEach(row => {
+                            const startKey = `${parseFloat(row.StartLatitude).toFixed(6)},${parseFloat(row.StartLongitude).toFixed(6)}`;
+                            const endKey = `${parseFloat(row.EndLatitude).toFixed(6)},${parseFloat(row.EndLongitude).toFixed(6)}`;
+                            if (!uniqueCoords.has(startKey)) uniqueCoords.add(startKey);
+                            if (!uniqueCoords.has(endKey)) uniqueCoords.add(endKey);
+                        });
+                        uniqueCoords.forEach(coordKey => {
+                            const [lat, lng] = coordKey.split(',').map(parseFloat);
+                            const matchingRows = data.filter(row => {
+                                const startKey = `${parseFloat(row.StartLatitude).toFixed(6)},${parseFloat(row.StartLongitude).toFixed(6)}`;
+                                const endKey = `${parseFloat(row.EndLatitude).toFixed(6)},${parseFloat(row.EndLongitude).toFixed(6)}`;
+                                return startKey === coordKey || endKey === coordKey;
+                            });
+                            const primaryRegion = matchingRows[0].Region;
+                            const markerColor = regionColors[primaryRegion] || '#000000';
+                            const displayValue = matchingRows.length > 1 ? matchingRows.length : '';
+                            let popupContent = matchingRows.length > 1 ? '<b>Multiple Delivery Zones</b><br><ul>' : '<b>Delivery Zone</b><br><ul>';
+                            matchingRows.forEach(row => {
+                                popupContent += `
+                                    <li>
+                                        <b>${row.SubRegion}</b><br>
+                                        Region: ${row.Region}<br>
+                                        Range: ${row.RangeStart}-${row.RangeEnd}<br>
+                                        Gire Price: ${row['Gire Price'] || 'N/A'}<br>
+                                        Autoringen Price: ${row['Autoringen Price'] || 'N/A'}<br>
+                                        Suggested Autoringen Price: ${row['Suggested Autoringen Price'] || 'N/A'}<br>
+                                        Distance: ${row.Distance_km} km<br>
+                                        Latitude: ${lat}<br>
+                                        Longitude: ${lng}
+                                    </li>
+                                `;
+                            });
+                            popupContent += '</ul>';
+                            const marker = L.marker([lat, lng], {
+                                title: `${matchingRows.length} zone${matchingRows.length > 1 ? 's' : ''} at this location`,
+                                icon: L.divIcon({
+                                    className: 'custom-marker',
+                                    html: `<div style="background-color: ${markerColor};">${displayValue}</div>`,
+                                    iconSize: [30, 30],
+                                    iconAnchor: [15, 30]
+                                })
+                            }).bindPopup(popupContent);
+                            layers['all'].addLayer(marker);
+                        });
+                    } else {
+                        // All markers (2 per row) for region tabs
+                        data.forEach(row => {
+                            // Start marker
+                            const startLat = parseFloat(row.StartLatitude);
+                            const startLng = parseFloat(row.StartLongitude);
+                            const startPrice = parseFloat(row['Suggested Autoringen Price']) || 0;
+                            const startColor = getHeatmapColor(startPrice);
+                            const startDisplay = startPrice.toFixed(0);
+                            let startPopupContent = '<b>Delivery Zone</b><br><ul>';
+                            startPopupContent += `
                                 <li>
                                     <b>${row.SubRegion}</b><br>
                                     Region: ${row.Region}<br>
@@ -239,23 +249,55 @@
                                     Autoringen Price: ${row['Autoringen Price'] || 'N/A'}<br>
                                     Suggested Autoringen Price: ${row['Suggested Autoringen Price'] || 'N/A'}<br>
                                     Distance: ${row.Distance_km} km<br>
-                                    Latitude: ${lat}<br>
-                                    Longitude: ${lng}
+                                    Latitude: ${startLat}<br>
+                                    Longitude: ${startLng}
                                 </li>
                             `;
+                            startPopupContent += '</ul>';
+                            const startMarker = L.marker([startLat, startLng], {
+                                title: `Price: ${startDisplay} NOK`,
+                                icon: L.divIcon({
+                                    className: 'custom-marker',
+                                    html: `<div style="background-color: ${startColor};">${startDisplay}</div>`,
+                                    iconSize: [30, 30],
+                                    iconAnchor: [15, 30]
+                                })
+                            }).bindPopup(startPopupContent);
+                            layers[sted].addLayer(startMarker);
+
+                            // End marker
+                            const endLat = parseFloat(row.EndLatitude);
+                            const endLng = parseFloat(row.EndLongitude);
+                            const endPrice = parseFloat(row['Suggested Autoringen Price']) || 0;
+                            const endColor = getHeatmapColor(endPrice);
+                            const endDisplay = endPrice.toFixed(0);
+                            let endPopupContent = '<b>Delivery Zone</b><br><ul>';
+                            endPopupContent += `
+                                <li>
+                                    <b>${row.SubRegion}</b><br>
+                                    Region: ${row.Region}<br>
+                                    Range: ${row.RangeStart}-${row.RangeEnd}<br>
+                                    Gire Price: ${row['Gire Price'] || 'N/A'}<br>
+                                    Autoringen Price: ${row['Autoringen Price'] || 'N/A'}<br>
+                                    Suggested Autoringen Price: ${row['Suggested Autoringen Price'] || 'N/A'}<br>
+                                    Distance: ${row.Distance_km} km<br>
+                                    Latitude: ${endLat}<br>
+                                    Longitude: ${endLng}
+                                </li>
+                            `;
+                            endPopupContent += '</ul>';
+                            const endMarker = L.marker([endLat, endLng], {
+                                title: `Price: ${endDisplay} NOK`,
+                                icon: L.divIcon({
+                                    className: 'custom-marker',
+                                    html: `<div style="background-color: ${endColor};">${endDisplay}</div>`,
+                                    iconSize: [30, 30],
+                                    iconAnchor: [15, 30]
+                                })
+                            }).bindPopup(endPopupContent);
+                            layers[sted].addLayer(endMarker);
                         });
-                        popupContent += '</ul>';
-                        const marker = L.marker([lat, lng], {
-                            title: sted === 'all' ? `${rows.length} zone${rows.length > 1 ? 's' : ''} at this location` : `Price: ${displayValue} NOK`,
-                            icon: L.divIcon({
-                                className: 'custom-marker',
-                                html: `<div style="background-color: ${markerColor};">${displayValue}</div>`,
-                                iconSize: [30, 30],
-                                iconAnchor: [15, 30]
-                            })
-                        }).bindPopup(popupContent);
-                        layers[sted].addLayer(marker);
-                    });
+                    }
                     // Add the selected layer to the map
                     map.eachLayer(layer => {
                         if (layer instanceof L.LayerGroup) map.removeLayer(layer);
