@@ -6,8 +6,6 @@
     <title>Delivery Zones Map</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
     <style>
         body {
             font-family: 'Roboto', sans-serif;
@@ -129,24 +127,25 @@
         <p>Powered by <a href="https://www.openstreetmap.org" target="_blank">OpenStreetMap</a> | <a href="https://www.autoringen.no" target="_blank">Autoringen</a></p>
     </footer>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
     <script>
         const map = L.map('map', {
             minZoom: 5,
             maxZoom: 18
-        }); // Initialize with zoom limits
+        });
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         }).addTo(map);
+
         const layers = {
-            'all': L.markerClusterGroup(),
-            'Skedsmo': L.markerClusterGroup(),
-            'Bergen': L.markerClusterGroup(),
-            'Stavanger': L.markerClusterGroup(),
-            'Trondheim': L.markerClusterGroup(),
-            'Ski': L.markerClusterGroup()
+            'all': L.layerGroup(),
+            'Skedsmo': L.layerGroup(),
+            'Bergen': L.layerGroup(),
+            'Stavanger': L.layerGroup(),
+            'Trondheim': L.layerGroup(),
+            'Ski': L.layerGroup()
         };
+
         // Unique colors for regions in 'all' mode
         const regionColors = {
             'Bergen': '#1b8a5a', // Teal/Green
@@ -155,6 +154,7 @@
             'Skedsmo': '#1d4877', // Dark Blue
             'Ski': '#ee3e32' // Red
         };
+
         // Heatmap color function for region-specific mode
         const minPrice = 578;
         const maxPrice = 990;
@@ -163,6 +163,7 @@
             const hue = (1 - ratio) * 240; // Blue (240) to Red (0)
             return `hsl(${hue}, 70%, 50%)`;
         }
+
         function toggleLayer(sted) {
             // Clear all layers and remove active class from buttons
             Object.keys(layers).forEach(key => {
@@ -251,6 +252,9 @@
                         layers[sted].addLayer(marker);
                     });
                     // Add the selected layer to the map
+                    map.eachLayer(layer => {
+                        if (layer instanceof L.LayerGroup) map.removeLayer(layer);
+                    });
                     layers[sted].addTo(map);
                     // Auto-zoom to bounds of displayed markers
                     if (data.length > 0) {
