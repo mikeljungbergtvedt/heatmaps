@@ -194,7 +194,11 @@
                                 return rowKey === coordKey;
                             });
                             const primaryRegion = matchingRows[0].Region;
-                            const markerColor = regionColors[primaryRegion] || '#000000';
+                            const isMissing = matchingRows[0].RangeStart.startsWith('[MISSING]');
+                            let markerColor = regionColors[primaryRegion] || '#000000';
+                            if (isMissing) {
+                                markerColor = '#FF00FF'; // Magenta for missing/error
+                            }
                             const displayValue = matchingRows.length > 1 ? matchingRows.length : '';
                             let popupContent = matchingRows.length > 1 ? '<b>Multiple Delivery Zones</b><br><ul>' : '<b>Delivery Zone</b><br><ul>';
                             matchingRows.forEach(row => {
@@ -229,7 +233,10 @@
                             const lat = parseFloat(row.Latitude);
                             const lng = parseFloat(row.Longitude);
                             const price = parseFloat(row['Suggested Autoringen Price']) || 0;
-                            const markerColor = getHeatmapColor(price);
+                            let markerColor = getHeatmapColor(price);
+                            if (row.RangeStart.startsWith('[MISSING]')) {
+                                markerColor = '#FF00FF'; // Magenta for missing/error
+                            }
                             const displayValue = price.toFixed(0);
                             let popupContent = '<b>Delivery Zone</b><br><ul>';
                             popupContent += `
