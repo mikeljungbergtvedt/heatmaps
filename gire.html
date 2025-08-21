@@ -50,12 +50,12 @@
         .nav-bar a.active {
             filter: brightness(1.2);
         }
-        .nav-bar a.all { background-color: #666666; } /* Gray for 'Alle' */
-        .nav-bar a.skedsmo { background-color: #1d4877; } /* Dark Blue */
-        .nav-bar a.bergen { background-color: #1b8a5a; } /* Teal/Green */
-        .nav-bar a.stavanger { background-color: #fbb021; } /* Yellow/Orange */
-        .nav-bar a.trondheim { background-color: #f68838; } /* Orange */
-        .nav-bar a.ski { background-color: #ee3e32; } /* Red */
+        .nav-bar a.all { background-color: #666666; }
+        .nav-bar a.skedsmo { background-color: #1d4877; }
+        .nav-bar a.bergen { background-color: #1b8a5a; }
+        .nav-bar a.stavanger { background-color: #fbb021; }
+        .nav-bar a.trondheim { background-color: #f68838; }
+        .nav-bar a.ski { background-color: #ee3e32; }
         .map-container {
             max-width: 1200px;
             margin: 20px auto;
@@ -78,7 +78,7 @@
             border-radius: 50%;
             font-size: 14px;
             font-weight: bold;
-            color: #fff; /* Changed to white */
+            color: #fff;
             text-align: center;
             border: 2px solid #fff;
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
@@ -131,7 +131,7 @@
     </div>
     <div class="error-message" id="errorMessage"></div>
     <footer>
-        <p>Powered by <a href="https://www.openstreetmap.org" target="_blank">OpenStreetMap</a> | <a href="https://www.autoringen.no" target="_blank">Autoringen</a></p>
+        <p>Powered by <a href="https://www.openstreetmap.org" target="_blank">OpenStreetMap</a> | <a href="https://www.autoringen.no" target="_blank">Autoringen</a> | Postnummerdata frå <a href="http://www.erikbolstad.no/postnummer/" target="_blank">Erik Bolstad</a></p>
     </footer>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
@@ -152,11 +152,11 @@
             'Ski': L.layerGroup()
         };
         const regionColors = {
-            'Bergen': '#1b8a5a', // Teal/Green
-            'Trondheim': '#f68838', // Orange
-            'Stavanger': '#fbb021', // Yellow/Orange
-            'Skedsmo': '#1d4877', // Dark Blue
-            'Ski': '#ee3e32' // Red
+            'Bergen': '#1b8a5a',
+            'Trondheim': '#f68838',
+            'Stavanger': '#fbb021',
+            'Skedsmo': '#1d4877',
+            'Ski': '#ee3e32'
         };
         const minPrice = 578;
         const maxPrice = 990;
@@ -171,33 +171,27 @@
                 document.querySelectorAll('.nav-bar a').forEach(a => a.classList.remove('active'));
             });
             document.querySelector(`.nav-bar a[onclick="toggleLayer('${sted}')"]`).classList.add('active');
-            Papa.parse('./reconciled_postal_ranges_with_coords.csv', {
+            Papa.parse('./reconciled_boundary_postcodes.csv', {
                 download: true,
                 header: true,
                 complete: function(results) {
                     const data = results.data.filter(row =>
-                        row.StartLatitude && row.StartLongitude && row.EndLatitude && row.EndLongitude &&
-                        !isNaN(parseFloat(row.StartLatitude)) && !isNaN(parseFloat(row.StartLongitude)) &&
-                        !isNaN(parseFloat(row.EndLatitude)) && !isNaN(parseFloat(row.EndLongitude)) &&
+                        row.Latitude && row.Longitude &&
+                        !isNaN(parseFloat(row.Latitude)) && !isNaN(parseFloat(row.Longitude)) &&
                         (sted === 'all' || row.Region === sted)
                     );
                     console.log(`Loaded ${data.length} valid rows for ${sted}:`, data);
-                    // Handle markers based on tab
                     if (sted === 'all') {
-                        // Unique markers for Alle tab
                         const uniqueCoords = new Set();
                         data.forEach(row => {
-                            const startKey = `${parseFloat(row.StartLatitude).toFixed(6)},${parseFloat(row.StartLongitude).toFixed(6)}`;
-                            const endKey = `${parseFloat(row.EndLatitude).toFixed(6)},${parseFloat(row.EndLongitude).toFixed(6)}`;
-                            if (!uniqueCoords.has(startKey)) uniqueCoords.add(startKey);
-                            if (!uniqueCoords.has(endKey)) uniqueCoords.add(endKey);
+                            const coordKey = `${parseFloat(row.Latitude).toFixed(6)},${parseFloat(row.Longitude).toFixed(6)}`;
+                            uniqueCoords.add(coordKey);
                         });
                         uniqueCoords.forEach(coordKey => {
                             const [lat, lng] = coordKey.split(',').map(parseFloat);
                             const matchingRows = data.filter(row => {
-                                const startKey = `${parseFloat(row.StartLatitude).toFixed(6)},${parseFloat(row.StartLongitude).toFixed(6)}`;
-                                const endKey = `${parseFloat(row.EndLatitude).toFixed(6)},${parseFloat(row.EndLongitude).toFixed(6)}`;
-                                return startKey === coordKey || endKey === coordKey;
+                                const rowKey = `${parseFloat(row.Latitude).toFixed(6)},${parseFloat(row.Longitude).toFixed(6)}`;
+                                return rowKey === coordKey;
                             });
                             const primaryRegion = matchingRows[0].Region;
                             const markerColor = regionColors[primaryRegion] || '#000000';
@@ -208,13 +202,13 @@
                                     <li>
                                         <b>${row.SubRegion}</b><br>
                                         Region: ${row.Region}<br>
-                                        Range: ${row.RangeStart}-${row.RangeEnd}<br>
+                                        Postcode: ${row.RangeStart}<br>
                                         Gire Price: ${row['Gire Price'] || 'N/A'}<br>
                                         Autoringen Price: ${row['Autoringen Price'] || 'N/A'}<br>
                                         Suggested Autoringen Price: ${row['Suggested Autoringen Price'] || 'N/A'}<br>
                                         Distance: ${row.Distance_km} km<br>
                                         Latitude: ${lat}<br>
-                                        Longitude: ${lng}
+                                        Longitude: ${lng}<br>
                                     </li>
                                 `;
                             });
@@ -231,84 +225,47 @@
                             layers['all'].addLayer(marker);
                         });
                     } else {
-                        // All markers (2 per row) for region tabs
                         data.forEach(row => {
-                            // Start marker
-                            const startLat = parseFloat(row.StartLatitude);
-                            const startLng = parseFloat(row.StartLongitude);
-                            const startPrice = parseFloat(row['Suggested Autoringen Price']) || 0;
-                            const startColor = getHeatmapColor(startPrice);
-                            const startDisplay = startPrice.toFixed(0);
-                            let startPopupContent = '<b>Delivery Zone</b><br><ul>';
-                            startPopupContent += `
+                            const lat = parseFloat(row.Latitude);
+                            const lng = parseFloat(row.Longitude);
+                            const price = parseFloat(row['Suggested Autoringen Price']) || 0;
+                            const markerColor = getHeatmapColor(price);
+                            const displayValue = price.toFixed(0);
+                            let popupContent = '<b>Delivery Zone</b><br><ul>';
+                            popupContent += `
                                 <li>
                                     <b>${row.SubRegion}</b><br>
                                     Region: ${row.Region}<br>
-                                    Range: ${row.RangeStart}-${row.RangeEnd}<br>
+                                    Postcode: ${row.RangeStart}<br>
                                     Gire Price: ${row['Gire Price'] || 'N/A'}<br>
                                     Autoringen Price: ${row['Autoringen Price'] || 'N/A'}<br>
                                     Suggested Autoringen Price: ${row['Suggested Autoringen Price'] || 'N/A'}<br>
                                     Distance: ${row.Distance_km} km<br>
-                                    Latitude: ${startLat}<br>
-                                    Longitude: ${startLng}
+                                    Latitude: ${lat}<br>
+                                    Longitude: ${lng}<br>
                                 </li>
                             `;
-                            startPopupContent += '</ul>';
-                            const startMarker = L.marker([startLat, startLng], {
-                                title: `Price: ${startDisplay} NOK`,
+                            popupContent += '</ul>';
+                            const marker = L.marker([lat, lng], {
+                                title: `Price: ${displayValue} NOK`,
                                 icon: L.divIcon({
                                     className: 'custom-marker',
-                                    html: `<div style="background-color: ${startColor};">${startDisplay}</div>`,
+                                    html: `<div style="background-color: ${markerColor};">${displayValue}</div>`,
                                     iconSize: [30, 30],
                                     iconAnchor: [15, 30]
                                 })
-                            }).bindPopup(startPopupContent);
-                            layers[sted].addLayer(startMarker);
-
-                            // End marker
-                            const endLat = parseFloat(row.EndLatitude);
-                            const endLng = parseFloat(row.EndLongitude);
-                            const endPrice = parseFloat(row['Suggested Autoringen Price']) || 0;
-                            const endColor = getHeatmapColor(endPrice);
-                            const endDisplay = endPrice.toFixed(0);
-                            let endPopupContent = '<b>Delivery Zone</b><br><ul>';
-                            endPopupContent += `
-                                <li>
-                                    <b>${row.SubRegion}</b><br>
-                                    Region: ${row.Region}<br>
-                                    Range: ${row.RangeStart}-${row.RangeEnd}<br>
-                                    Gire Price: ${row['Gire Price'] || 'N/A'}<br>
-                                    Autoringen Price: ${row['Autoringen Price'] || 'N/A'}<br>
-                                    Suggested Autoringen Price: ${row['Suggested Autoringen Price'] || 'N/A'}<br>
-                                    Distance: ${row.Distance_km} km<br>
-                                    Latitude: ${endLat}<br>
-                                    Longitude: ${endLng}
-                                </li>
-                            `;
-                            endPopupContent += '</ul>';
-                            const endMarker = L.marker([endLat, endLng], {
-                                title: `Price: ${endDisplay} NOK`,
-                                icon: L.divIcon({
-                                    className: 'custom-marker',
-                                    html: `<div style="background-color: ${endColor};">${endDisplay}</div>`,
-                                    iconSize: [30, 30],
-                                    iconAnchor: [15, 30]
-                                })
-                            }).bindPopup(endPopupContent);
-                            layers[sted].addLayer(endMarker);
+                            }).bindPopup(popupContent);
+                            layers[sted].addLayer(marker);
                         });
                     }
-                    // Add the selected layer to the map
                     map.eachLayer(layer => {
                         if (layer instanceof L.LayerGroup) map.removeLayer(layer);
                     });
                     layers[sted].addTo(map);
-                    // Auto-zoom to bounds of displayed markers
                     if (data.length > 0) {
                         const bounds = L.latLngBounds([]);
                         data.forEach(row => {
-                            bounds.extend([parseFloat(row.StartLatitude), parseFloat(row.StartLongitude)]);
-                            bounds.extend([parseFloat(row.EndLatitude), parseFloat(row.EndLongitude)]);
+                            bounds.extend([parseFloat(row.Latitude), parseFloat(row.Longitude)]);
                         });
                         if (bounds.isValid()) {
                             console.log('Zooming to bounds:', bounds.toBBoxString());
@@ -326,13 +283,12 @@
                 error: function(error) {
                     console.error('Error loading CSV:', error);
                     const errorMessage = document.getElementById('errorMessage');
-                    errorMessage.textContent = 'Error loading reconciled_postal_ranges_with_coords.csv. Check file path and accessibility.';
+                    errorMessage.textContent = 'Error loading reconciled_boundary_postcodes.csv. Check file path and accessibility.';
                     errorMessage.style.display = 'block';
                     map.setView([64.0, 10.0], 5);
                 }
             });
         }
-        // Load all markers by default
         toggleLayer('all');
     </script>
 </body>
