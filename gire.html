@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
     <style>
-        body { font-family: 'Roboto', sans-serif; margin: 0; padding: 0; background: #f4f4f4; color: #333; }
+        body { font-family: 'Roboto', sans-serif; margin: 0; padding: 0; background: #f4f4f4; color: #333; font-size: 16px; }
         header { background: #003087; color: #fff; padding: 20px; text-align: center; }
         header img.logo { max-width: 150px; height: auto; }
         h1 { margin: 10px 0; font-size: 2.5em; font-weight: 700; }
@@ -23,13 +23,24 @@
         .nav-bar a.stavanger { background: #fbb021; }
         .nav-bar a.trondheim { background: #f68838; }
         .nav-bar a.ski { background: #ee3e32; }
-        .map-container { max-width: 1200px; margin: 20px auto; padding: 20px; background: rgba(255, 255, 255, 0.8); border-radius: 8px; height: 80vh; }
+        .map-container { max-width: 1200px; margin: 20px auto; padding: 20px; background: rgba(255, 255, 255, 0.8); border-radius: 8px; height: 80vh; position: relative; }
         #map { width: 100%; height: 100%; }
         .custom-marker { position: relative; }
         .custom-marker div { width: 40px; height: 40px; line-height: 40px; border-radius: 50%; font-size: 14px; font-weight: bold; color: #fff; text-align: center; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.3); background: inherit; }
         .error-message { text-align: center; color: red; padding: 10px; display: none; }
         .leaflet-popup-content ul { list-style-type: none; padding: 0; margin: 0; }
-        @media (max-width: 600px) { .nav-bar a { display: block; margin: 5px auto; width: 80%; } h1 { font-size: 1.8em; } .map-container { margin: 10px; padding: 10px; height: 70vh; } .custom-marker div { width: 38px; height: 38px; line-height: 38px; font-size: 12px; } }
+        .map-attribution {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            font-size: 10px;
+            color: #333;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 2px 5px;
+            border-radius: 3px;
+            z-index: 1000;
+        }
+        @media (max-width: 600px) { .nav-bar a { display: block; margin: 5px auto; width: 80%; } h1 { font-size: 1.8em; } .map-container { margin: 10px; padding: 10px; height: 70vh; } .custom-marker div { width: 38px; height: 38px; line-height: 38px; font-size: 12px; } .map-attribution { font-size: 8px; } }
     </style>
 </head>
 <body>
@@ -42,9 +53,12 @@
         <a href="javascript:void(0)" onclick="toggleLayer('Trondheim')" class="trondheim">Trondheim</a>
         <a href="javascript:void(0)" onclick="toggleLayer('Ski')" class="ski">Ski</a>
     </div>
-    <div class="map-container"><div id="map"></div></div>
+    <div class="map-container">
+        <div id="map"></div>
+        <div class="map-attribution">Powered by OpenStreetMap | Autoringen | Postnummerdata frå Erik Bolstad</div>
+    </div>
     <div class="error-message" id="errorMessage"></div>
-    <footer><p>Powered by <a href="https://www.openstreetmap.org" target="_blank">OpenStreetMap</a> | <a href="https://www.autoringen.no" target="_blank">Autoringen</a> | Postnummerdata frå <a href="http://www.erikbolstad.no/postnummer/" target="_blank">Erik Bolstad</a></p></footer>
+    <footer></footer>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
