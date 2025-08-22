@@ -158,8 +158,8 @@
             'Skedsmo': '#1d4877',
             'Ski': '#ee3e32'
         };
-        const minPrice = 580; // Updated based on Foreslått Autoringen Pris
-        const maxPrice = 1090; // Updated based on Foreslått Autoringen Pris
+        const minPrice = 580;
+        const maxPrice = 1090;
         function getHeatmapColor(price) {
             const ratio = (price - minPrice) / (maxPrice - minPrice);
             const hue = (1 - ratio) * 240; // Blue (240) to Red (0)
@@ -194,7 +194,7 @@
                                 return rowKey === coordKey;
                             });
                             const primaryRegion = matchingRows[0].Region;
-                            const isMissing = !row['place name'] || row['place name'] === '';
+                            const isMissing = !matchingRows[0]['Sub Region'] || matchingRows[0]['Sub Region'] === '';
                             let markerColor = regionColors[primaryRegion] || '#000000';
                             if (isMissing) {
                                 markerColor = '#FF00FF'; // Magenta for missing/error
@@ -204,13 +204,11 @@
                             matchingRows.forEach(row => {
                                 popupContent += `
                                     <li>
-                                        <b>${row['place name'] || 'N/A'}</b><br>
+                                        <b>${row['Sub Region'] || 'N/A'}</b><br>
                                         Region: ${row.Region}<br>
                                         Postcode: ${row.Postnummer}<br>
-                                        Gire Price: ${row['Gire Price'] || 'N/A'}<br>
                                         Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>
                                         Suggested Autoringen Price: ${row['Foreslått Autoringen Pris'] || 'N/A'}<br>
-                                        Distance: ${row.Distance_km} km<br>
                                         Latitude: ${lat}<br>
                                         Longitude: ${lng}<br>
                                     </li>
@@ -234,20 +232,18 @@
                             const lng = parseFloat(row.longitude);
                             const price = parseFloat(row['Foreslått Autoringen Pris']) || 0;
                             let markerColor = getHeatmapColor(price);
-                            if (!row['place name'] || row['place name'] === '') {
+                            if (!row['Sub Region'] || row['Sub Region'] === '') {
                                 markerColor = '#FF00FF'; // Magenta for missing/error
                             }
                             const displayValue = price.toFixed(0);
                             let popupContent = '<b>Delivery Zone</b><br><ul>';
                             popupContent += `
                                 <li>
-                                    <b>${row['place name'] || 'N/A'}</b><br>
+                                    <b>${row['Sub Region'] || 'N/A'}</b><br>
                                     Region: ${row.Region}<br>
                                     Postcode: ${row.Postnummer}<br>
-                                    Gire Price: ${row['Gire Price'] || 'N/A'}<br>
                                     Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>
                                     Suggested Autoringen Price: ${row['Foreslått Autoringen Pris'] || 'N/A'}<br>
-                                    Distance: ${row.Distance_km} km<br>
                                     Latitude: ${lat}<br>
                                     Longitude: ${lng}<br>
                                 </li>
