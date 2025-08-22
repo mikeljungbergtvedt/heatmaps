@@ -204,8 +204,8 @@
                             matchingRows.forEach(row => {
                                 popupContent += `
                                     <li>
-                                        ${row['Sub Region'] || 'N/A'}<br>
-                                        Fra: ${row.Region}<br>
+                                        ${row.Region}<br>
+                                        Sub Region: ${row['Sub Region'] || 'N/A'}<br>
                                         Postkode: ${row.Postnummer}<br>
                                         Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>
                                         Foreslått Autoringen Pris: ${row['Foreslått Autoringen Pris'] || 'N/A'}<br>
@@ -239,8 +239,8 @@
                             let popupContent = '<ul>';
                             popupContent += `
                                 <li>
-                                    ${row['Sub Region'] || 'N/A'}<br>
-                                    Fra: ${row.Region}<br>
+                                    ${row.Region}<br>
+                                    Sub Region: ${row['Sub Region'] || 'N/A'}<br>
                                     Postkode: ${row.Postnummer}<br>
                                     Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>
                                     Foreslått Autoringen Pris: ${row['Foreslått Autoringen Pris'] || 'N/A'}<br>
