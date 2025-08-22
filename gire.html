@@ -171,14 +171,14 @@
                 document.querySelectorAll('.nav-bar a').forEach(a => a.classList.remove('active'));
             });
             document.querySelector(`.nav-bar a[onclick="toggleLayer('${sted}')"]`).classList.add('active');
-            Papa.parse('./merged_postcodes_complete.csv', {
+            Papa.parse('./merged_postcodes_complete-kopi 2.csv', {
                 download: true,
                 header: true,
                 complete: function(results) {
                     const data = results.data.filter(row =>
                         row.latitude && row.longitude &&
                         !isNaN(parseFloat(row.latitude)) && !isNaN(parseFloat(row.longitude)) &&
-                        (sted === 'all' || row.Region === sted)
+                        (sted === 'all' || row.Fra === sted)
                     );
                     console.log(`Loaded ${data.length} valid rows for ${sted}:`, data);
                     if (sted === 'all') {
@@ -193,8 +193,8 @@
                                 const rowKey = `${parseFloat(row.latitude).toFixed(6)},${parseFloat(row.longitude).toFixed(6)}`;
                                 return rowKey === coordKey;
                             });
-                            const primaryRegion = matchingRows[0].Region;
-                            const isMissing = !matchingRows[0]['Sub Region'] || matchingRows[0]['Sub Region'] === '';
+                            const primaryRegion = matchingRows[0].Fra;
+                            const isMissing = !matchingRows[0].Poststed || matchingRows[0].Poststed === '';
                             let markerColor = regionColors[primaryRegion] || '#000000';
                             if (isMissing) {
                                 markerColor = '#FF00FF'; // Magenta for missing/error
@@ -203,7 +203,7 @@
                             let popupContent = matchingRows.length > 1 ? `<b>Fra ${primaryRegion}</b><br>` : `<b>Fra ${primaryRegion}</b><br>`;
                             matchingRows.forEach(row => {
                                 popupContent += `
-                                    Poststed: ${row['Sub Region'] || 'N/A'}<br>
+                                    Poststed: ${row.Poststed || 'N/A'}<br>
                                     Postkode: ${row.Postnummer}<br>
                                     Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>
                                     Foreslått Autoringen Pris: ${row['Foreslått Autoringen Pris'] || 'N/A'}<br>
@@ -226,15 +226,16 @@
                         data.forEach(row => {
                             const lat = parseFloat(row.latitude);
                             const lng = parseFloat(row.longitude);
-                            const price = parseFloat(row['Foreslått Autoringen Pris'].replace(',', '.').replace(' kr', '')) || 0;
+                            const priceStr = row['Foreslått Autoringen Pris'] || '0';
+                            const price = parseFloat(priceStr.replace(',', '.')) || 0;
                             let markerColor = getHeatmapColor(price);
-                            if (!row['Sub Region'] || row['Sub Region'] === '') {
+                            if (!row.Poststed || row.Poststed === '') {
                                 markerColor = '#FF00FF'; // Magenta for missing/error
                             }
                             const displayValue = price.toFixed(0);
-                            let popupContent = `<b>Fra ${row.Region}</b><br>`;
+                            let popupContent = `<b>Fra ${row.Fra}</b><br>`;
                             popupContent += `
-                                Poststed: ${row['Sub Region'] || 'N/A'}<br>
+                                Poststed: ${row.Poststed || 'N/A'}<br>
                                 Postkode: ${row.Postnummer}<br>
                                 Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>
                                 Foreslått Autoringen Pris: ${row['Foreslått Autoringen Pris'] || 'N/A'}<br>
