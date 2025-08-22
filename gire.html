@@ -75,7 +75,7 @@
                         data.forEach(row => {
                             const lat = parseFloat(row.latitude); const lng = parseFloat(row.longitude);
                             const priceStr = row['Foreslått Autoringen Pris'] || '0';
-                            const price = parseInt(priceStr.replace(',', '').split('.')[0]) || 0; // Take integer part before decimal
+                            const price = parseInt(priceStr.split(',')[0]) || 0; // Take integer before comma
                             let markerColor = getHeatmapColor(price); if (!row['Sub Region'] || row['Sub Region'] === '') markerColor = '#FF00FF';
                             const displayValue = price < 1000 ? price.toString().padStart(3, '0') : price.toString().padStart(4, '0');
                             let popupContent = '<ul>';
