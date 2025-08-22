@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Delivery Zones Map</title>
+    <title>Forslag til Gire Soner</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
     <style>
         body { font-family: 'Roboto', sans-serif; margin: 0; padding: 0; background: #f4f4f4; color: #333; font-size: 16px; }
-        header { background: #003087; color: #fff; padding: 20px; text-align: center; }
-        header img.logo { max-width: 150px; height: auto; }
-        h1 { margin: 10px 0; font-size: 2.5em; font-weight: 700; }
+        header { background: #003087; color: #fff; padding: 15px; text-align: center; }
+        header img.logo { max-width: 120px; height: auto; }
+        h1 { margin: 5px 0; font-size: 1.5em; font-weight: 400; color: #e0e0e0; text-transform: uppercase; letter-spacing: 1px; }
         .nav-bar { max-width: 1200px; margin: 10px auto; text-align: center; }
         .nav-bar a { display: inline-block; color: #fff; text-decoration: none; padding: 10px 20px; margin: 5px; border-radius: 5px; font-weight: 700; transition: background-color 0.3s, transform 0.2s; }
         .nav-bar a:hover { transform: scale(1.05); }
@@ -58,7 +58,7 @@
         }
         @media (max-width: 600px) {
             .nav-bar a { display: block; margin: 5px auto; width: 80%; }
-            h1 { font-size: 1.8em; }
+            h1 { font-size: 1.3em; }
             .map-container { margin: 10px; padding: 10px; height: 70vh; }
             .custom-marker div { width: 38px; height: 38px; line-height: 38px; font-size: 12px; }
             .map-attribution { font-size: 8px; }
@@ -68,7 +68,7 @@
     </style>
 </head>
 <body>
-    <header><img src="logo.png" alt="Autoringen Logo" class="logo"><h1>Delivery Zones Map</h1></header>
+    <header><img src="logo.png" alt="Autoringen Logo" class="logo"><h1>Forslag til Gire Soner</h1></header>
     <div class="nav-bar">
         <a href="javascript:void(0)" onclick="toggleLayer('all')" class="all active">Alle</a>
         <a href="javascript:void(0)" onclick="toggleLayer('Skedsmo')" class="skedsmo">Skedsmo</a>
