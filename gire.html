@@ -65,21 +65,21 @@
                             const matchingRows = data.filter(row => `${parseFloat(row.latitude).toFixed(6)},${parseFloat(row.longitude).toFixed(6)}` === coordKey);
                             const primaryRegion = matchingRows[0].Region; const isMissing = !matchingRows[0]['Sub Region'] || matchingRows[0]['Sub Region'] === '';
                             let markerColor = regionColors[primaryRegion] || '#000000'; if (isMissing) markerColor = '#FF00FF';
-                            const displayValue = matchingRows.length > 1 ? matchingRows.length : '';
+                            const displayValue = matchingRows.length > 1 ? matchingRows.length : row['Foreslått Autoringen Pris'] || '';
                             let popupContent = matchingRows.length > 1 ? '<ul>' : '<ul>';
-                            matchingRows.forEach(row => { popupContent += `<li>${row.Region}<br>Poststed: ${row['Sub Region'] || 'N/A'}<br>Postkode: ${row.Postnummer}<br>Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>Foreslått Autoringen Pris: ${parseInt(row['Foreslått Autoringen Pris'].replace(/[^0-9]/g, ''))}<br>Latitude: ${lat}<br>Longitude: ${lng}<br></li>`; });
-                            popupContent += '</ul>';
+                            matchingRows.forEach(row => { popupContent += `<li>${row.Region}<br>Poststed: ${row['Sub Region'] || 'N/A'}<br>Postkode: ${row.Postnummer}<br>Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>Foreslått Autoringen Pris: ${row['Foreslått Autoringen Pris']}<br>Latitude: ${lat}<br>Longitude: ${lng}<br></li>`; });
+                            popupContent += '</ul';
                             layers['all'].addLayer(L.marker([lat, lng], { title: `${matchingRows.length} zone${matchingRows.length > 1 ? 's' : ''}`, icon: L.divIcon({ className: 'custom-marker', html: `<div style="background-color: ${markerColor};">${displayValue}</div>`, iconSize: [40, 40], iconAnchor: [20, 40] }) }).bindPopup(popupContent));
                         });
                     } else {
                         data.forEach(row => {
                             const lat = parseFloat(row.latitude); const lng = parseFloat(row.longitude);
                             const priceStr = row['Foreslått Autoringen Pris'] || '0';
-                            const price = parseInt(priceStr.replace(/[^0-9]/g, '')) || 0; // Remove all non-digits
+                            const price = parseInt(priceStr.replace(/[^0-9]/g, '')) || 0;
                             let markerColor = getHeatmapColor(price); if (!row['Sub Region'] || row['Sub Region'] === '') markerColor = '#FF00FF';
                             const displayValue = price < 1000 ? price.toString().padStart(3, '0') : price.toString().padStart(4, '0');
                             let popupContent = '<ul>';
-                            popupContent += `<li>${row.Region}<br>Poststed: ${row['Sub Region'] || 'N/A'}<br>Postkode: ${row.Postnummer}<br>Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>Foreslått Autoringen Pris: ${parseInt(row['Foreslått Autoringen Pris'].replace(/[^0-9]/g, ''))}<br>Latitude: ${lat}<br>Longitude: ${lng}<br></li>`;
+                            popupContent += `<li>${row.Region}<br>Poststed: ${row['Sub Region'] || 'N/A'}<br>Postkode: ${row.Postnummer}<br>Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>Foreslått Autoringen Pris: ${row['Foreslått Autoringen Pris']}<br>Latitude: ${lat}<br>Longitude: ${lng}<br></li>`;
                             popupContent += '</ul>';
                             layers[sted].addLayer(L.marker([lat, lng], { title: `Price: ${displayValue} NOK`, icon: L.divIcon({ className: 'custom-marker', html: `<div style="background-color: ${markerColor};">${displayValue}</div>`, iconSize: [40, 40], iconAnchor: [20, 40] }) }).bindPopup(popupContent));
                         });
