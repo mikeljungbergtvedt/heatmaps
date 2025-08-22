@@ -226,7 +226,7 @@
                         data.forEach(row => {
                             const lat = parseFloat(row.latitude);
                             const lng = parseFloat(row.longitude);
-                            const price = parseFloat(row['Foreslått Autoringen Pris']) || 0;
+                            const price = parseFloat(row['Foreslått Autoringen Pris'].replace(',', '.').replace(' kr', '')) || 0;
                             let markerColor = getHeatmapColor(price);
                             if (!row['Sub Region'] || row['Sub Region'] === '') {
                                 markerColor = '#FF00FF'; // Magenta for missing/error
