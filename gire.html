@@ -76,8 +76,11 @@
                             const lat = parseFloat(row.latitude); const lng = parseFloat(row.longitude);
                             const price = Math.floor(parseFloat(row['Foreslått Autoringen Pris'].replace(',', '')) || 0);
                             let markerColor = getHeatmapColor(price); if (!row['Sub Region'] || row['Sub Region'] === '') markerColor = '#FF00FF';
-                            const displayValue = price < 1000 ? price.toString() : price.toString();
-                            layers[sted].addLayer(L.marker([lat, lng], { title: `Price: ${displayValue} NOK`, icon: L.divIcon({ className: 'custom-marker', html: `<div style="background-color: ${markerColor};">${displayValue}</div>`, iconSize: [30, 30], iconAnchor: [15, 30] }) }).bindPopup(`<ul><li>${row.Region}<br>Poststed: ${row['Sub Region'] || 'N/A'}<br>Postkode: ${row.Postnummer}<br>Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>Foreslått Autoringen Pris: ${row['Foreslått Autoringen Pris'] || 'N/A'}<br>Latitude: ${lat}<br>Longitude: ${lng}<br></li></ul>`));
+                            const displayValue = price < 1000 ? price.toFixed(0).padStart(3, '0') : price.toFixed(0).padStart(4, '0');
+                            let popupContent = '<ul>';
+                            popupContent += `<li>${row.Region}<br>Poststed: ${row['Sub Region'] || 'N/A'}<br>Postkode: ${row.Postnummer}<br>Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>Foreslått Autoringen Pris: ${row['Foreslått Autoringen Pris'] || 'N/A'}<br>Latitude: ${lat}<br>Longitude: ${lng}<br></li>`;
+                            popupContent += '</ul>';
+                            layers[sted].addLayer(L.marker([lat, lng], { title: `Price: ${displayValue} NOK`, icon: L.divIcon({ className: 'custom-marker', html: `<div style="background-color: ${markerColor};">${displayValue}</div>`, iconSize: [30, 30], iconAnchor: [15, 30] }) }).bindPopup(popupContent));
                         });
                     }
                     map.eachLayer(layer => { if (layer instanceof L.LayerGroup) map.removeLayer(layer); });
