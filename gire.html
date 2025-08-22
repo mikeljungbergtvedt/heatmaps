@@ -165,6 +165,10 @@
             const hue = (1 - ratio) * 240; // Blue (240) to Red (0)
             return `hsl(${hue}, 70%, 50%)`;
         }
+        function formatCurrency(value) {
+            if (!value && value !== 0) return 'N/A';
+            return value.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+        }
         function toggleLayer(sted) {
             Object.keys(layers).forEach(key => {
                 layers[key].clearLayers();
@@ -199,14 +203,15 @@
                             if (isMissing) {
                                 markerColor = '#FF00FF'; // Magenta for missing/error
                             }
-                            const displayValue = matchingRows.length > 1 ? matchingRows.length : '';
+                            const price = parseFloat(matchingRows[0]['Foreslått Autoringen Pris']) || 0;
+                            const displayValue = matchingRows.length > 1 ? matchingRows.length : price.toFixed(0);
                             let popupContent = matchingRows.length > 1 ? `<b>Fra ${primaryRegion}</b><br>` : `<b>Fra ${primaryRegion}</b><br>`;
                             matchingRows.forEach(row => {
                                 popupContent += `
                                     Poststed: ${row.Poststed || 'N/A'}<br>
                                     Postkode: ${row.Postnummer}<br>
-                                    Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>
-                                    Foreslått Autoringen Pris: ${row['Foreslått Autoringen Pris'] || 'N/A'}<br>
+                                    Autoringen Price: ${formatCurrency(row['Priser Autoringen'])}<br>
+                                    Foreslått Autoringen Pris: ${formatCurrency(row['Foreslått Autoringen Pris'])}<br>
                                     Latitude: ${lat}<br>
                                     Longitude: ${lng}<br><br>
                                 `;
@@ -226,8 +231,7 @@
                         data.forEach(row => {
                             const lat = parseFloat(row.latitude);
                             const lng = parseFloat(row.longitude);
-                            const priceStr = row['Foreslått Autoringen Pris'] || '0';
-                            const price = parseFloat(priceStr.replace(',', '.')) || 0;
+                            const price = parseFloat(row['Foreslått Autoringen Pris']) || 0;
                             let markerColor = getHeatmapColor(price);
                             if (!row.Poststed || row.Poststed === '') {
                                 markerColor = '#FF00FF'; // Magenta for missing/error
@@ -237,8 +241,8 @@
                             popupContent += `
                                 Poststed: ${row.Poststed || 'N/A'}<br>
                                 Postkode: ${row.Postnummer}<br>
-                                Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>
-                                Foreslått Autoringen Pris: ${row['Foreslått Autoringen Pris'] || 'N/A'}<br>
+                                Autoringen Price: ${formatCurrency(row['Priser Autoringen'])}<br>
+                                Foreslått Autoringen Pris: ${formatCurrency(row['Foreslått Autoringen Pris'])}<br>
                                 Latitude: ${lat}<br>
                                 Longitude: ${lng}<br>
                             `;
