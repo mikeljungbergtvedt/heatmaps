@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="nb-NO">
 <head>
@@ -136,23 +137,13 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
     <script>
-        // Initialize the map
-        let map;
-        try {
-            map = L.map('map', {
-                minZoom: 5,
-                maxZoom: 18
-            });
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            }).addTo(map);
-            map.setView([64.0, 10.0], 5); // Default view
-        } catch (error) {
-            console.error('Error initializing map:', error);
-            document.getElementById('errorMessage').textContent = 'Error initializing map. Check console for details.';
-            document.getElementById('errorMessage').style.display = 'block';
-        }
-
+        const map = L.map('map', {
+            minZoom: 5,
+            maxZoom: 18
+        });
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
         const layers = {
             'all': L.layerGroup(),
             'Skedsmo': L.layerGroup(),
@@ -170,44 +161,27 @@
         };
         const minPrice = 580;
         const maxPrice = 1090;
-
         function getHeatmapColor(price) {
             const ratio = (price - minPrice) / (maxPrice - minPrice);
             const hue = (1 - ratio) * 240; // Blue (240) to Red (0)
             return `hsl(${hue}, 70%, 50%)`;
         }
-
-        function formatCurrency(value) {
-            if (!value && value !== 0) return 'N/A';
-            return value.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-        }
-
         function toggleLayer(sted) {
             Object.keys(layers).forEach(key => {
                 layers[key].clearLayers();
                 document.querySelectorAll('.nav-bar a').forEach(a => a.classList.remove('active'));
             });
             document.querySelector(`.nav-bar a[onclick="toggleLayer('${sted}')"]`).classList.add('active');
-
-            Papa.parse('./merged_postcodes_complete.csv', {
+            Papa.parse('./merged_postcodes_complete-kopi 2.csv', {
                 download: true,
                 header: true,
                 complete: function(results) {
-                    if (!results.data) {
-                        console.error('No data loaded from CSV');
-                        document.getElementById('errorMessage').textContent = 'No data loaded from CSV. Check file format.';
-                        document.getElementById('errorMessage').style.display = 'block';
-                        map.setView([64.0, 10.0], 5);
-                        return;
-                    }
-
                     const data = results.data.filter(row =>
                         row.latitude && row.longitude &&
                         !isNaN(parseFloat(row.latitude)) && !isNaN(parseFloat(row.longitude)) &&
                         (sted === 'all' || row.Fra === sted)
                     );
                     console.log(`Loaded ${data.length} valid rows for ${sted}:`, data);
-
                     if (sted === 'all') {
                         const uniqueCoords = new Set();
                         data.forEach(row => {
@@ -226,15 +200,14 @@
                             if (isMissing) {
                                 markerColor = '#FF00FF'; // Magenta for missing/error
                             }
-                            const price = parseFloat(matchingRows[0]['Foreslått Autoringen Pris']) || 0;
-                            const displayValue = matchingRows.length > 1 ? matchingRows.length : price.toFixed(0);
+                            const displayValue = matchingRows.length > 1 ? matchingRows.length : '';
                             let popupContent = matchingRows.length > 1 ? `<b>Fra ${primaryRegion}</b><br>` : `<b>Fra ${primaryRegion}</b><br>`;
                             matchingRows.forEach(row => {
                                 popupContent += `
                                     Poststed: ${row.Poststed || 'N/A'}<br>
                                     Postkode: ${row.Postnummer}<br>
-                                    Autoringen Price: ${formatCurrency(row['Priser Autoringen'])}<br>
-                                    Foreslått Autoringen Pris: ${formatCurrency(row['Foreslått Autoringen Pris'])}<br>
+                                    Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>
+                                    Foreslått Autoringen Pris: ${row['Foreslått Autoringen Pris'] || 'N/A'}<br>
                                     Latitude: ${lat}<br>
                                     Longitude: ${lng}<br><br>
                                 `;
@@ -254,7 +227,8 @@
                         data.forEach(row => {
                             const lat = parseFloat(row.latitude);
                             const lng = parseFloat(row.longitude);
-                            const price = parseFloat(row['Foreslått Autoringen Pris']) || 0;
+                            const priceStr = row['Foreslått Autoringen Pris'] || '0';
+                            const price = parseFloat(priceStr.replace(',', '.')) || 0;
                             let markerColor = getHeatmapColor(price);
                             if (!row.Poststed || row.Poststed === '') {
                                 markerColor = '#FF00FF'; // Magenta for missing/error
@@ -264,8 +238,8 @@
                             popupContent += `
                                 Poststed: ${row.Poststed || 'N/A'}<br>
                                 Postkode: ${row.Postnummer}<br>
-                                Autoringen Price: ${formatCurrency(row['Priser Autoringen'])}<br>
-                                Foreslått Autoringen Pris: ${formatCurrency(row['Foreslått Autoringen Pris'])}<br>
+                                Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>
+                                Foreslått Autoringen Pris: ${row['Foreslått Autoringen Pris'] || 'N/A'}<br>
                                 Latitude: ${lat}<br>
                                 Longitude: ${lng}<br>
                             `;
@@ -319,8 +293,6 @@
                 }
             });
         }
-
-        // Initial load
         toggleLayer('all');
     </script>
 </body>
