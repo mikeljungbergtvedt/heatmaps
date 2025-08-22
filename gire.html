@@ -241,8 +241,8 @@
                                 markerColor = '#FF00FF'; // Magenta for missing/error
                             }
                             const displayValue = price < 1000 ? 
-                                price.toString().padStart(3, '0') : 
-                                price.toString().padStart(4, '0');
+                                price.toString().padStart(3, '0').replace(/\..*/, '') : 
+                                price.toString().padStart(4, '0').replace(/\..*/, '');
                             let popupContent = '<ul>';
                             popupContent += `
                                 <li>
