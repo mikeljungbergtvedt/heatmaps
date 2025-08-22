@@ -29,18 +29,42 @@
         .custom-marker div { width: 40px; height: 40px; line-height: 40px; border-radius: 50%; font-size: 14px; font-weight: bold; color: #fff; text-align: center; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.3); background: inherit; }
         .error-message { text-align: center; color: red; padding: 10px; display: none; }
         .leaflet-popup-content ul { list-style-type: none; padding: 0; margin: 0; }
-        .map-attribution {
+        .map-attribution { position: absolute; bottom: 10px; left: 20px; font-size: 10px; color: #333; background: rgba(255, 255, 255, 0.7); padding: 2px 5px; border-radius: 3px; z-index: 1000; }
+        .search-container {
             position: absolute;
-            bottom: 10px;
-            left: 10px;
-            font-size: 10px;
-            color: #333;
-            background: rgba(255, 255, 255, 0.7);
-            padding: 2px 5px;
-            border-radius: 3px;
+            bottom: 50px; /* 50px from bottom */
+            left: 50px; /* 50px from left border */
             z-index: 1000;
+            background: rgba(255, 255, 255, 0.95); /* Light background */
+            padding: 4px 8px; /* Reduced frame */
+            border-radius: 10px; /* Smooth, Apple-like curve */
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); /* Glossy shadow */
+            backdrop-filter: blur(5px); /* Liquid effect */
+            display: flex;
+            align-items: center;
         }
-        @media (max-width: 600px) { .nav-bar a { display: block; margin: 5px auto; width: 80%; } h1 { font-size: 1.8em; } .map-container { margin: 10px; padding: 10px; height: 70vh; } .custom-marker div { width: 38px; height: 38px; line-height: 38px; font-size: 12px; } .map-attribution { font-size: 8px; } }
+        .search-container input {
+            padding: 5px;
+            font-size: 14px;
+            border: none; /* Remove default border */
+            background: transparent; /* Match liquid background */
+            width: 180px;
+            outline: none;
+            color: #333;
+            transition: color 0.3s;
+        }
+        .search-container input:focus {
+            color: #003087; /* Apple-like focus color */
+        }
+        @media (max-width: 600px) {
+            .nav-bar a { display: block; margin: 5px auto; width: 80%; }
+            h1 { font-size: 1.8em; }
+            .map-container { margin: 10px; padding: 10px; height: 70vh; }
+            .custom-marker div { width: 38px; height: 38px; line-height: 38px; font-size: 12px; }
+            .map-attribution { font-size: 8px; }
+            .search-container { bottom: 40px; left: 30px; padding: 3px 6px; }
+            .search-container input { font-size: 12px; width: 140px; }
+        }
     </style>
 </head>
 <body>
@@ -56,6 +80,9 @@
     <div class="map-container">
         <div id="map"></div>
         <div class="map-attribution">Powered by OpenStreetMap | Autoringen | Postnummerdata frå Erik Bolstad</div>
+        <div class="search-container">
+            <input type="text" id="searchInput" placeholder="Søk poststed" onkeyup="searchSubRegion()">
+        </div>
     </div>
     <div class="error-message" id="errorMessage"></div>
     <footer></footer>
@@ -69,12 +96,16 @@
         const regionColors = { 'Bergen': '#1b8a5a', 'Trondheim': '#f68838', 'Stavanger': '#fbb021', 'Skedsmo': '#1d4877', 'Ski': '#ee3e32' };
         const minPrice = 580; const maxPrice = 1090;
         function getHeatmapColor(price) { const ratio = (price - minPrice) / (maxPrice - minPrice); return `hsl(${(1 - ratio) * 240}, 70%, 50%)`; }
+
+        let allMarkers = []; // To store all markers for searching
+
         function toggleLayer(sted) {
             Object.keys(layers).forEach(key => { layers[key].clearLayers(); document.querySelectorAll('.nav-bar a').forEach(a => a.classList.remove('active')); });
             document.querySelector(`.nav-bar a[onclick="toggleLayer('${sted}')"]`).classList.add('active');
             Papa.parse('./merged_postcodes_complete.csv', {
                 download: true, header: true, complete: function(results) {
                     const data = results.data.filter(row => row.latitude && row.longitude && !isNaN(parseFloat(row.latitude)) && !isNaN(parseFloat(row.longitude)) && (sted === 'all' || row.Region === sted));
+                    allMarkers = []; // Reset markers array
                     if (sted === 'all') {
                         const uniqueCoords = new Set(); data.forEach(row => uniqueCoords.add(`${parseFloat(row.latitude).toFixed(6)},${parseFloat(row.longitude).toFixed(6)}`));
                         uniqueCoords.forEach(coordKey => {
@@ -84,7 +115,10 @@
                             let markerColor = regionColors[primaryRegion] || '#000000'; if (isMissing) markerColor = '#FF00FF';
                             const displayValue = matchingRows.length > 1 ? matchingRows.length : '';
                             let popupContent = matchingRows.length > 1 ? '<ul>' : '<ul>';
-                            matchingRows.forEach(row => { popupContent += `<li>${row.Region}<br>Poststed: ${row['Sub Region'] || 'N/A'}<br>Postkode: ${row.Postnummer}<br>Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>Foreslått Autoringen Pris: ${row['Foreslått Autoringen Pris'] || 'N/A'}<br>Latitude: ${lat}<br>Longitude: ${lng}<br></li>`; });
+                            matchingRows.forEach(row => { 
+                                popupContent += `<li>${row.Region}<br>Poststed: ${row['Sub Region'] || 'N/A'}<br>Postkode: ${row.Postnummer}<br>Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>Foreslått Autoringen Pris: ${row['Foreslått Autoringen Pris'] || 'N/A'}<br>Latitude: ${lat}<br>Longitude: ${lng}<br></li>`;
+                                allMarkers.push({ lat: lat, lng: lng, subRegion: row['Sub Region'] || 'N/A' });
+                            });
                             popupContent += '</ul>';
                             layers['all'].addLayer(L.marker([lat, lng], { title: `${matchingRows.length} zone${matchingRows.length > 1 ? 's' : ''}`, icon: L.divIcon({ className: 'custom-marker', html: `<div style="background-color: ${markerColor};">${displayValue}</div>`, iconSize: [40, 40], iconAnchor: [20, 40] }) }).bindPopup(popupContent));
                         });
@@ -98,7 +132,9 @@
                             let popupContent = '<ul>';
                             popupContent += `<li>${row.Region}<br>Poststed: ${row['Sub Region'] || 'N/A'}<br>Postkode: ${row.Postnummer}<br>Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>Foreslått Autoringen Pris: ${row['Foreslått Autoringen Pris'] || 'N/A'}<br>Latitude: ${lat}<br>Longitude: ${lng}<br></li>`;
                             popupContent += '</ul>';
-                            layers[sted].addLayer(L.marker([lat, lng], { title: `Price: ${displayValue} NOK`, icon: L.divIcon({ className: 'custom-marker', html: `<div style="background-color: ${markerColor};">${displayValue}</div>`, iconSize: [40, 40], iconAnchor: [20, 40] }) }).bindPopup(popupContent));
+                            const marker = L.marker([lat, lng], { title: `Price: ${displayValue} NOK`, icon: L.divIcon({ className: 'custom-marker', html: `<div style="background-color: ${markerColor};">${displayValue}</div>`, iconSize: [40, 40], iconAnchor: [20, 40] }) }).bindPopup(popupContent);
+                            layers[sted].addLayer(marker);
+                            allMarkers.push({ lat: lat, lng: lng, subRegion: row['Sub Region'] || 'N/A' });
                         });
                     }
                     map.eachLayer(layer => { if (layer instanceof L.LayerGroup) map.removeLayer(layer); });
@@ -106,6 +142,21 @@
                     if (data.length > 0) { const bounds = L.latLngBounds([]); data.forEach(row => bounds.extend([parseFloat(row.latitude), parseFloat(row.longitude)])); if (bounds.isValid()) map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 }); else map.setView([64.0, 10.0], 5); } else map.setView([64.0, 10.0], 5);
                     map.invalidateSize();
                 }, error: function(error) { console.error('Error loading CSV:', error); document.getElementById('errorMessage').textContent = 'Error loading merged_postcodes_complete.csv. Check file path.'; document.getElementById('errorMessage').style.display = 'block'; map.setView([64.0, 10.0], 5); }
+            });
+        }
+
+        function searchSubRegion() {
+            const searchValue = document.getElementById('searchInput').value.toLowerCase();
+            map.eachLayer(layer => {
+                if (layer instanceof L.MarkerClusterGroup) {
+                    layer.eachLayer(marker => {
+                        const markerData = allMarkers.find(m => m.lat === marker.getLatLng().lat && m.lng === marker.getLatLng().lng);
+                        if (markerData && markerData.subRegion.toLowerCase().includes(searchValue)) {
+                            marker.openPopup();
+                            map.setView(marker.getLatLng(), 15);
+                        }
+                    });
+                }
             });
         }
         toggleLayer('all');
