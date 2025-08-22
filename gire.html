@@ -51,7 +51,7 @@
     <script>
         const map = L.map('map', { minZoom: 5, maxZoom: 18 });
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
-        const layers = { 'all': L.markerClusterGroup({ maxClusterRadius: 40 }), 'Skedsmo': L.markerClusterGroup({ maxClusterRadius: 40 }), 'Bergen': L.markerClusterGroup({ maxClusterRadius: 40 }), 'Stavanger': L.markerClusterGroup({ maxClusterRadius: 40 }), 'Trondheim': L.markerClusterGroup({ maxClusterRadius: 40 }), 'Ski': L.markerClusterGroup({ maxClusterRadius: 40 }) };
+        const layers = { 'all': L.markerClusterGroup({ maxClusterRadius: 30 }), 'Skedsmo': L.markerClusterGroup({ maxClusterRadius: 30 }), 'Bergen': L.markerClusterGroup({ maxClusterRadius: 30 }), 'Stavanger': L.markerClusterGroup({ maxClusterRadius: 30 }), 'Trondheim': L.markerClusterGroup({ maxClusterRadius: 30 }), 'Ski': L.markerClusterGroup({ maxClusterRadius: 30 }) };
         const regionColors = { 'Bergen': '#1b8a5a', 'Trondheim': '#f68838', 'Stavanger': '#fbb021', 'Skedsmo': '#1d4877', 'Ski': '#ee3e32' };
         const minPrice = 580; const maxPrice = 1090;
         function getHeatmapColor(price) { const ratio = (price - minPrice) / (maxPrice - minPrice); return `hsl(${(1 - ratio) * 240}, 70%, 50%)`; }
