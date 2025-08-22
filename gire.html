@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="nb-NO">
 <head>
@@ -7,6 +6,8 @@
     <title>Delivery Zones Map</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
     <style>
         body { font-family: 'Roboto', sans-serif; margin: 0; padding: 0; background: #f4f4f4; color: #333; }
         header { background: #003087; color: #fff; padding: 20px; text-align: center; }
@@ -46,10 +47,11 @@
     <footer><p>Powered by <a href="https://www.openstreetmap.org" target="_blank">OpenStreetMap</a> | <a href="https://www.autoringen.no" target="_blank">Autoringen</a> | Postnummerdata frå <a href="http://www.erikbolstad.no/postnummer/" target="_blank">Erik Bolstad</a></p></footer>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script>
         const map = L.map('map', { minZoom: 5, maxZoom: 18 });
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
-        const layers = { 'all': L.layerGroup(), 'Skedsmo': L.layerGroup(), 'Bergen': L.layerGroup(), 'Stavanger': L.layerGroup(), 'Trondheim': L.layerGroup(), 'Ski': L.layerGroup() };
+        const layers = { 'all': L.markerClusterGroup(), 'Skedsmo': L.markerClusterGroup(), 'Bergen': L.markerClusterGroup(), 'Stavanger': L.markerClusterGroup(), 'Trondheim': L.markerClusterGroup(), 'Ski': L.markerClusterGroup() };
         const regionColors = { 'Bergen': '#1b8a5a', 'Trondheim': '#f68838', 'Stavanger': '#fbb021', 'Skedsmo': '#1d4877', 'Ski': '#ee3e32' };
         const minPrice = 580; const maxPrice = 1090;
         function getHeatmapColor(price) { const ratio = (price - minPrice) / (maxPrice - minPrice); return `hsl(${(1 - ratio) * 240}, 70%, 50%)`; }
@@ -76,7 +78,7 @@
                         data.forEach(row => {
                             const lat = parseFloat(row.latitude); const lng = parseFloat(row.longitude);
                             const priceStr = row['Foreslått Autoringen Pris'] || '0';
-                            const price = parseInt(priceStr.replace(/,.*$/, '')) || 0; // Remove everything after comma
+                            const price = parseInt(priceStr.replace(/[^0-9]/g, '')) || 0;
                             let markerColor = getHeatmapColor(price); if (!row['Sub Region'] || row['Sub Region'] === '') markerColor = '#FF00FF';
                             const displayValue = price < 1000 ? price.toString().padStart(3, '0') : price.toString().padStart(4, '0');
                             let popupContent = '<ul>';
@@ -86,7 +88,7 @@
                         });
                     }
                     map.eachLayer(layer => { if (layer instanceof L.LayerGroup) map.removeLayer(layer); });
-                    layers[sted].addTo(map);
+                    map.addLayer(layers[sted]);
                     if (data.length > 0) { const bounds = L.latLngBounds([]); data.forEach(row => bounds.extend([parseFloat(row.latitude), parseFloat(row.longitude)])); if (bounds.isValid()) map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 }); else map.setView([64.0, 10.0], 5); } else map.setView([64.0, 10.0], 5);
                     map.invalidateSize();
                 }, error: function(error) { console.error('Error loading CSV:', error); document.getElementById('errorMessage').textContent = 'Error loading merged_postcodes_complete.csv. Check file path.'; document.getElementById('errorMessage').style.display = 'block'; map.setView([64.0, 10.0], 5); }
