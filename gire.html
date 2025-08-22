@@ -200,21 +200,17 @@
                                 markerColor = '#FF00FF'; // Magenta for missing/error
                             }
                             const displayValue = matchingRows.length > 1 ? matchingRows.length : '';
-                            let popupContent = matchingRows.length > 1 ? '<ul>' : '<ul>';
+                            let popupContent = matchingRows.length > 1 ? `<b>Fra ${primaryRegion}</b><br>` : `<b>Fra ${primaryRegion}</b><br>`;
                             matchingRows.forEach(row => {
                                 popupContent += `
-                                    <li>
-                                        ${row['Sub Region'] || 'N/A'}<br>
-                                        Fra: ${row.Region}<br>
-                                        Postkode: ${row.Postnummer}<br>
-                                        Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>
-                                        Foreslått Autoringen Pris: ${row['Foreslått Autoringen Pris'] || 'N/A'}<br>
-                                        Latitude: ${lat}<br>
-                                        Longitude: ${lng}<br>
-                                    </li>
+                                    Poststed: ${row['Sub Region'] || 'N/A'}<br>
+                                    Postkode: ${row.Postnummer}<br>
+                                    Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>
+                                    Foreslått Autoringen Pris: ${row['Foreslått Autoringen Pris'] || 'N/A'}<br>
+                                    Latitude: ${lat}<br>
+                                    Longitude: ${lng}<br><br>
                                 `;
                             });
-                            popupContent += '</ul>';
                             const marker = L.marker([lat, lng], {
                                 title: `${matchingRows.length} zone${matchingRows.length > 1 ? 's' : ''} at this location`,
                                 icon: L.divIcon({
@@ -236,19 +232,15 @@
                                 markerColor = '#FF00FF'; // Magenta for missing/error
                             }
                             const displayValue = price.toFixed(0);
-                            let popupContent = '<ul>';
+                            let popupContent = `<b>Fra ${row.Region}</b><br>`;
                             popupContent += `
-                                <li>
-                                    ${row['Sub Region'] || 'N/A'}<br>
-                                    Fra: ${row.Region}<br>
-                                    Postkode: ${row.Postnummer}<br>
-                                    Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>
-                                    Foreslått Autoringen Pris: ${row['Foreslått Autoringen Pris'] || 'N/A'}<br>
-                                    Latitude: ${lat}<br>
-                                    Longitude: ${lng}<br>
-                                </li>
+                                Poststed: ${row['Sub Region'] || 'N/A'}<br>
+                                Postkode: ${row.Postnummer}<br>
+                                Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>
+                                Foreslått Autoringen Pris: ${row['Foreslått Autoringen Pris'] || 'N/A'}<br>
+                                Latitude: ${lat}<br>
+                                Longitude: ${lng}<br>
                             `;
-                            popupContent += '</ul>';
                             const marker = L.marker([lat, lng], {
                                 title: `Price: ${displayValue} NOK`,
                                 icon: L.divIcon({
