@@ -171,7 +171,7 @@
                 document.querySelectorAll('.nav-bar a').forEach(a => a.classList.remove('active'));
             });
             document.querySelector(`.nav-bar a[onclick="toggleLayer('${sted}')"]`).classList.add('active');
-            Papa.parse('./merged_postcodes_complete-kopi 2.csv', {
+            Papa.parse('./merged_postcodes_complete.csv', {
                 download: true,
                 header: true,
                 complete: function(results) {
