@@ -158,8 +158,8 @@
             'Skedsmo': '#1d4877',
             'Ski': '#ee3e32'
         };
-        const minPrice = 578;
-        const maxPrice = 990;
+        const minPrice = 580; // Updated based on Foreslått Autoringen Pris
+        const maxPrice = 1090; // Updated based on Foreslått Autoringen Pris
         function getHeatmapColor(price) {
             const ratio = (price - minPrice) / (maxPrice - minPrice);
             const hue = (1 - ratio) * 240; // Blue (240) to Red (0)
@@ -171,30 +171,30 @@
                 document.querySelectorAll('.nav-bar a').forEach(a => a.classList.remove('active'));
             });
             document.querySelector(`.nav-bar a[onclick="toggleLayer('${sted}')"]`).classList.add('active');
-            Papa.parse('./reconciled_boundary_postcodes.csv', {
+            Papa.parse('./merged_postcodes_complete.csv', {
                 download: true,
                 header: true,
                 complete: function(results) {
                     const data = results.data.filter(row =>
-                        row.Latitude && row.Longitude &&
-                        !isNaN(parseFloat(row.Latitude)) && !isNaN(parseFloat(row.Longitude)) &&
+                        row.latitude && row.longitude &&
+                        !isNaN(parseFloat(row.latitude)) && !isNaN(parseFloat(row.longitude)) &&
                         (sted === 'all' || row.Region === sted)
                     );
                     console.log(`Loaded ${data.length} valid rows for ${sted}:`, data);
                     if (sted === 'all') {
                         const uniqueCoords = new Set();
                         data.forEach(row => {
-                            const coordKey = `${parseFloat(row.Latitude).toFixed(6)},${parseFloat(row.Longitude).toFixed(6)}`;
+                            const coordKey = `${parseFloat(row.latitude).toFixed(6)},${parseFloat(row.longitude).toFixed(6)}`;
                             uniqueCoords.add(coordKey);
                         });
                         uniqueCoords.forEach(coordKey => {
                             const [lat, lng] = coordKey.split(',').map(parseFloat);
                             const matchingRows = data.filter(row => {
-                                const rowKey = `${parseFloat(row.Latitude).toFixed(6)},${parseFloat(row.Longitude).toFixed(6)}`;
+                                const rowKey = `${parseFloat(row.latitude).toFixed(6)},${parseFloat(row.longitude).toFixed(6)}`;
                                 return rowKey === coordKey;
                             });
                             const primaryRegion = matchingRows[0].Region;
-                            const isMissing = matchingRows[0].RangeStart.startsWith('[MISSING]');
+                            const isMissing = !row['place name'] || row['place name'] === '';
                             let markerColor = regionColors[primaryRegion] || '#000000';
                             if (isMissing) {
                                 markerColor = '#FF00FF'; // Magenta for missing/error
@@ -204,12 +204,12 @@
                             matchingRows.forEach(row => {
                                 popupContent += `
                                     <li>
-                                        <b>${row.SubRegion}</b><br>
+                                        <b>${row['place name'] || 'N/A'}</b><br>
                                         Region: ${row.Region}<br>
-                                        Postcode: ${row.RangeStart}<br>
+                                        Postcode: ${row.Postnummer}<br>
                                         Gire Price: ${row['Gire Price'] || 'N/A'}<br>
-                                        Autoringen Price: ${row['Autoringen Price'] || 'N/A'}<br>
-                                        Suggested Autoringen Price: ${row['Suggested Autoringen Price'] || 'N/A'}<br>
+                                        Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>
+                                        Suggested Autoringen Price: ${row['Foreslått Autoringen Pris'] || 'N/A'}<br>
                                         Distance: ${row.Distance_km} km<br>
                                         Latitude: ${lat}<br>
                                         Longitude: ${lng}<br>
@@ -230,23 +230,23 @@
                         });
                     } else {
                         data.forEach(row => {
-                            const lat = parseFloat(row.Latitude);
-                            const lng = parseFloat(row.Longitude);
-                            const price = parseFloat(row['Suggested Autoringen Price']) || 0;
+                            const lat = parseFloat(row.latitude);
+                            const lng = parseFloat(row.longitude);
+                            const price = parseFloat(row['Foreslått Autoringen Pris']) || 0;
                             let markerColor = getHeatmapColor(price);
-                            if (row.RangeStart.startsWith('[MISSING]')) {
+                            if (!row['place name'] || row['place name'] === '') {
                                 markerColor = '#FF00FF'; // Magenta for missing/error
                             }
                             const displayValue = price.toFixed(0);
                             let popupContent = '<b>Delivery Zone</b><br><ul>';
                             popupContent += `
                                 <li>
-                                    <b>${row.SubRegion}</b><br>
+                                    <b>${row['place name'] || 'N/A'}</b><br>
                                     Region: ${row.Region}<br>
-                                    Postcode: ${row.RangeStart}<br>
+                                    Postcode: ${row.Postnummer}<br>
                                     Gire Price: ${row['Gire Price'] || 'N/A'}<br>
-                                    Autoringen Price: ${row['Autoringen Price'] || 'N/A'}<br>
-                                    Suggested Autoringen Price: ${row['Suggested Autoringen Price'] || 'N/A'}<br>
+                                    Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>
+                                    Suggested Autoringen Price: ${row['Foreslått Autoringen Pris'] || 'N/A'}<br>
                                     Distance: ${row.Distance_km} km<br>
                                     Latitude: ${lat}<br>
                                     Longitude: ${lng}<br>
@@ -272,7 +272,7 @@
                     if (data.length > 0) {
                         const bounds = L.latLngBounds([]);
                         data.forEach(row => {
-                            bounds.extend([parseFloat(row.Latitude), parseFloat(row.Longitude)]);
+                            bounds.extend([parseFloat(row.latitude), parseFloat(row.longitude)]);
                         });
                         if (bounds.isValid()) {
                             console.log('Zooming to bounds:', bounds.toBBoxString());
@@ -290,7 +290,7 @@
                 error: function(error) {
                     console.error('Error loading CSV:', error);
                     const errorMessage = document.getElementById('errorMessage');
-                    errorMessage.textContent = 'Error loading reconciled_boundary_postcodes.csv. Check file path and accessibility.';
+                    errorMessage.textContent = 'Error loading merged_postcodes_complete.csv. Check file path and accessibility.';
                     errorMessage.style.display = 'block';
                     map.setView([64.0, 10.0], 5);
                 }
