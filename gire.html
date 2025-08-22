@@ -242,8 +242,8 @@
                             }
                             const displayValue = row['Foreslått Autoringen Pris'] ? 
                                 (price < 1000 ? 
-                                    row['Foreslått Autoringen Pris'].replace(',', '').slice(0, 3) : 
-                                    row['Foreslått Autoringen Pris'].replace(',', '').slice(0, 4)) : '0';
+                                    Math.floor(price).toString() : 
+                                    Math.floor(price).toString()) : '0';
                             let popupContent = '<ul>';
                             popupContent += `
                                 <li>
