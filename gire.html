@@ -67,7 +67,6 @@
         #map {
             width: 100%;
             height: 100%;
-            border: 2px solid red; /* Temporary for debugging */
         }
         .custom-marker {
             position: relative;
@@ -137,23 +136,13 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
     <script>
-        let map;
-        try {
-            map = L.map('map', {
-                minZoom: 5,
-                maxZoom: 18
-            });
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            }).addTo(map);
-            map.setView([64.0, 10.0], 5);
-        } catch (error) {
-            console.error('Error initializing map:', error);
-            document.getElementById('errorMessage').textContent = 'Error initializing map. Check console for details.';
-            document.getElementById('errorMessage').style.display = 'block';
-            return;
-        }
-
+        const map = L.map('map', {
+            minZoom: 5,
+            maxZoom: 18
+        });
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
         const layers = {
             'all': L.layerGroup(),
             'Skedsmo': L.layerGroup(),
@@ -171,54 +160,27 @@
         };
         const minPrice = 580;
         const maxPrice = 1090;
-
         function getHeatmapColor(price) {
             const ratio = (price - minPrice) / (maxPrice - minPrice);
-            const hue = (1 - ratio) * 240;
+            const hue = (1 - ratio) * 240; // Blue (240) to Red (0)
             return `hsl(${hue}, 70%, 50%)`;
         }
-
-        function formatCurrency(value) {
-            if (!value && value !== 0) return 'N/A';
-            return value.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-        }
-
         function toggleLayer(sted) {
             Object.keys(layers).forEach(key => {
                 layers[key].clearLayers();
                 document.querySelectorAll('.nav-bar a').forEach(a => a.classList.remove('active'));
             });
-            const activeLink = document.querySelector(`.nav-bar a[onclick="toggleLayer('${sted}')"]`);
-            if (activeLink) {
-                activeLink.classList.add('active');
-            } else {
-                console.warn(`No navigation link found for ${sted}`);
-            }
-
+            document.querySelector(`.nav-bar a[onclick="toggleLayer('${sted}')"]`).classList.add('active');
             Papa.parse('./merged_postcodes_complete.csv', {
                 download: true,
                 header: true,
                 complete: function(results) {
-                    if (!results.data) {
-                        console.error('No data loaded from CSV');
-                        document.getElementById('errorMessage').textContent = 'No data loaded from CSV. Check file format and path.';
-                        document.getElementById('errorMessage').style.display = 'block';
-                        map.setView([64.0, 10.0], 5);
-                        return;
-                    }
-
-                    const data = results.data.filter(row => {
-                        if (!row.latitude || !row.longitude || isNaN(parseFloat(row.latitude)) || isNaN(parseFloat(row.longitude))) {
-                            console.warn(`Invalid coordinates for row:`, row);
-                            return false;
-                        }
-                        if (sted !== 'all' && row.Fra !== sted) {
-                            return false;
-                        }
-                        return true;
-                    });
+                    const data = results.data.filter(row =>
+                        row.latitude && row.longitude &&
+                        !isNaN(parseFloat(row.latitude)) && !isNaN(parseFloat(row.longitude)) &&
+                        (sted === 'all' || row.Region === sted)
+                    );
                     console.log(`Loaded ${data.length} valid rows for ${sted}:`, data);
-
                     if (sted === 'all') {
                         const uniqueCoords = new Set();
                         data.forEach(row => {
@@ -231,39 +193,38 @@
                                 const rowKey = `${parseFloat(row.latitude).toFixed(6)},${parseFloat(row.longitude).toFixed(6)}`;
                                 return rowKey === coordKey;
                             });
-                            const primaryRegion = matchingRows[0].Fra;
-                            const isMissing = !matchingRows[0].Poststed || matchingRows[0].Poststed === '';
+                            const primaryRegion = matchingRows[0].Region;
+                            const isMissing = !matchingRows[0]['Sub Region'] || matchingRows[0]['Sub Region'] === '';
                             let markerColor = regionColors[primaryRegion] || '#000000';
                             if (isMissing) {
-                                markerColor = '#FF00FF';
+                                markerColor = '#FF00FF'; // Magenta for missing/error
                             }
-                            const price = parseFloat(matchingRows[0]['Foreslått Autoringen Pris']) || 0;
-                            const displayValue = matchingRows.length > 1 ? matchingRows.length : price.toFixed(0);
-                            let popupContent = `<b>Fra ${primaryRegion}</b><br>`;
+                            const displayValue = matchingRows.length > 1 ? matchingRows.length : '';
+                            let popupContent = matchingRows.length > 1 ? '<ul>' : '<ul>';
                             matchingRows.forEach(row => {
                                 popupContent += `
-                                    Poststed: ${row.Poststed || 'N/A'}<br>
-                                    Postkode: ${row.Postnummer}<br>
-                                    Autoringen Price: ${formatCurrency(row['Priser Autoringen'])}<br>
-                                    Foreslått Autoringen Pris: ${formatCurrency(row['Foreslått Autoringen Pris'])}<br>
-                                    Latitude: ${lat}<br>
-                                    Longitude: ${lng}<br><br>
+                                    <li>
+                                        ${row['Sub Region'] || 'N/A'}<br>
+                                        Fra: ${row.Region}<br>
+                                        Postkode: ${row.Postnummer}<br>
+                                        Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>
+                                        Foreslått Autoringen Pris: ${row['Foreslått Autoringen Pris'] || 'N/A'}<br>
+                                        Latitude: ${lat}<br>
+                                        Longitude: ${lng}<br>
+                                    </li>
                                 `;
                             });
-                            try {
-                                const marker = L.marker([lat, lng], {
-                                    title: `${matchingRows.length} zone${matchingRows.length > 1 ? 's' : ''} at this location`,
-                                    icon: L.divIcon({
-                                        className: 'custom-marker',
-                                        html: `<div style="background-color: ${markerColor};">${displayValue}</div>`,
-                                        iconSize: [30, 30],
-                                        iconAnchor: [15, 30]
-                                    })
-                                }).bindPopup(popupContent);
-                                layers['all'].addLayer(marker);
-                            } catch (error) {
-                                console.warn(`Error creating marker for coordinates (${lat}, ${lng}):`, error);
-                            }
+                            popupContent += '</ul>';
+                            const marker = L.marker([lat, lng], {
+                                title: `${matchingRows.length} zone${matchingRows.length > 1 ? 's' : ''} at this location`,
+                                icon: L.divIcon({
+                                    className: 'custom-marker',
+                                    html: `<div style="background-color: ${markerColor};">${displayValue}</div>`,
+                                    iconSize: [30, 30],
+                                    iconAnchor: [15, 30]
+                                })
+                            }).bindPopup(popupContent);
+                            layers['all'].addLayer(marker);
                         });
                     } else {
                         data.forEach(row => {
@@ -271,33 +232,33 @@
                             const lng = parseFloat(row.longitude);
                             const price = parseFloat(row['Foreslått Autoringen Pris']) || 0;
                             let markerColor = getHeatmapColor(price);
-                            if (!row.Poststed || row.Poststed === '') {
-                                markerColor = '#FF00FF';
+                            if (!row['Sub Region'] || row['Sub Region'] === '') {
+                                markerColor = '#FF00FF'; // Magenta for missing/error
                             }
                             const displayValue = price.toFixed(0);
-                            let popupContent = `<b>Fra ${row.Fra}</b><br>`;
+                            let popupContent = '<ul>';
                             popupContent += `
-                                Poststed: ${row.Poststed || 'N/A'}<br>
-                                Postkode: ${row.Postnummer}<br>
-                                Autoringen Price: ${formatCurrency(row['Priser Autoringen'])}<br>
-                                Foreslått Autoringen Pris: ${formatCurrency(row['Foreslått Autoringen Pris'])}<br>
-                                Latitude: ${lat}<br>
-                                Longitude: ${lng}<br>
+                                <li>
+                                    ${row['Sub Region'] || 'N/A'}<br>
+                                    Fra: ${row.Region}<br>
+                                    Postkode: ${row.Postnummer}<br>
+                                    Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>
+                                    Foreslått Autoringen Pris: ${row['Foreslått Autoringen Pris'] || 'N/A'}<br>
+                                    Latitude: ${lat}<br>
+                                    Longitude: ${lng}<br>
+                                </li>
                             `;
-                            try {
-                                const marker = L.marker([lat, lng], {
-                                    title: `Price: ${displayValue} NOK`,
-                                    icon: L.divIcon({
-                                        className: 'custom-marker',
-                                        html: `<div style="background-color: ${markerColor};">${displayValue}</div>`,
-                                        iconSize: [30, 30],
-                                        iconAnchor: [15, 30]
-                                    })
-                                }).bindPopup(popupContent);
-                                layers[sted].addLayer(marker);
-                            } catch (error) {
-                                console.warn(`Error creating marker for coordinates (${lat}, ${lng}):`, error);
-                            }
+                            popupContent += '</ul>';
+                            const marker = L.marker([lat, lng], {
+                                title: `Price: ${displayValue} NOK`,
+                                icon: L.divIcon({
+                                    className: 'custom-marker',
+                                    html: `<div style="background-color: ${markerColor};">${displayValue}</div>`,
+                                    iconSize: [30, 30],
+                                    iconAnchor: [15, 30]
+                                })
+                            }).bindPopup(popupContent);
+                            layers[sted].addLayer(marker);
                         });
                     }
                     map.eachLayer(layer => {
@@ -325,20 +286,12 @@
                 error: function(error) {
                     console.error('Error loading CSV:', error);
                     const errorMessage = document.getElementById('errorMessage');
-                    let errorText = 'Error loading merged_postcodes_complete.csv. Check file path and accessibility.';
-                    if (error.message) {
-                        errorText += ` Details: ${error.message}`;
-                    }
-                    if (error.type) {
-                        errorText += ` Type: ${error.type}`;
-                    }
-                    errorMessage.textContent = errorText;
+                    errorMessage.textContent = 'Error loading merged_postcodes_complete.csv. Check file path and accessibility.';
                     errorMessage.style.display = 'block';
                     map.setView([64.0, 10.0], 5);
                 }
             });
         }
-
         toggleLayer('all');
     </script>
 </body>
