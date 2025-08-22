@@ -68,22 +68,6 @@
             width: 100%;
             height: 100%;
         }
-        .custom-marker {
-            position: relative;
-        }
-        .custom-marker div {
-            width: 30px;
-            height: 30px;
-            line-height: 30px;
-            border-radius: 50%;
-            font-size: 14px;
-            font-weight: bold;
-            color: #fff;
-            text-align: center;
-            border: 2px solid #fff;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-            background-color: inherit;
-        }
         .error-message {
             text-align: center;
             color: red;
@@ -108,12 +92,6 @@
                 margin: 10px;
                 padding: 10px;
                 height: 70vh;
-            }
-            .custom-marker div {
-                width: 28px;
-                height: 28px;
-                line-height: 28px;
-                font-size: 12px;
             }
         }
     </style>
@@ -224,9 +202,9 @@
                                 title: `${matchingRows.length} zone${matchingRows.length > 1 ? 's' : ''} at this location`,
                                 icon: L.divIcon({
                                     className: 'custom-marker',
-                                    html: `<div style="background-color: ${markerColor};">${displayValue}</div>`,
+                                    html: `<span style="color: ${markerColor};">${displayValue}</span>`,
                                     iconSize: [30, 30],
-                                    iconAnchor: [15, 30]
+                                    iconAnchor: [15, 15]
                                 })
                             }).bindPopup(popupContent);
                             layers['all'].addLayer(marker);
@@ -240,7 +218,10 @@
                             if (!row['Sub Region'] || row['Sub Region'] === '') {
                                 markerColor = '#FF00FF'; // Magenta for missing/error
                             }
-                            const displayValue = row['Foreslått Autoringen Pris'] ? row['Foreslått Autoringen Pris'].replace(',', '').split('.')[0] : '0';
+                            const displayValue = row['Foreslått Autoringen Pris'] ? 
+                                (price < 1000 ? 
+                                    row['Foreslått Autoringen Pris'].replace(',', '').slice(0, 3) : 
+                                    row['Foreslått Autoringen Pris'].replace(',', '').split('.')[0]) : '0';
                             let popupContent = '<ul>';
                             popupContent += `
                                 <li>
@@ -258,9 +239,9 @@
                                 title: `Price: ${displayValue} NOK`,
                                 icon: L.divIcon({
                                     className: 'custom-marker',
-                                    html: `<div style="background-color: ${markerColor};">${displayValue}</div>`,
+                                    html: `<span style="color: ${markerColor};">${displayValue}</span>`,
                                     iconSize: [30, 30],
-                                    iconAnchor: [15, 30]
+                                    iconAnchor: [15, 15]
                                 })
                             }).bindPopup(popupContent);
                             layers[sted].addLayer(marker);
