@@ -24,10 +24,10 @@
         .map-container { max-width: 1200px; margin: 20px auto; padding: 20px; background: rgba(255, 255, 255, 0.8); border-radius: 8px; height: 80vh; }
         #map { width: 100%; height: 100%; }
         .custom-marker { position: relative; }
-        .custom-marker div { width: 30px; height: 30px; line-height: 30px; border-radius: 50%; font-size: 14px; font-weight: bold; color: #fff; text-align: center; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.3); background: inherit; }
+        .custom-marker div { width: 40px; height: 40px; line-height: 40px; border-radius: 50%; font-size: 14px; font-weight: bold; color: #fff; text-align: center; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.3); background: inherit; }
         .error-message { text-align: center; color: red; padding: 10px; display: none; }
         .leaflet-popup-content ul { list-style-type: none; padding: 0; margin: 0; }
-        @media (max-width: 600px) { .nav-bar a { display: block; margin: 5px auto; width: 80%; } h1 { font-size: 1.8em; } .map-container { margin: 10px; padding: 10px; height: 70vh; } .custom-marker div { width: 28px; height: 28px; line-height: 28px; font-size: 12px; } }
+        @media (max-width: 600px) { .nav-bar a { display: block; margin: 5px auto; width: 80%; } h1 { font-size: 1.8em; } .map-container { margin: 10px; padding: 10px; height: 70vh; } .custom-marker div { width: 38px; height: 38px; line-height: 38px; font-size: 12px; } }
     </style>
 </head>
 <body>
@@ -69,19 +69,19 @@
                             let popupContent = matchingRows.length > 1 ? '<ul>' : '<ul>';
                             matchingRows.forEach(row => { popupContent += `<li>${row.Region}<br>Poststed: ${row['Sub Region'] || 'N/A'}<br>Postkode: ${row.Postnummer}<br>Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>Foreslått Autoringen Pris: ${row['Foreslått Autoringen Pris'] || 'N/A'}<br>Latitude: ${lat}<br>Longitude: ${lng}<br></li>`; });
                             popupContent += '</ul>';
-                            layers['all'].addLayer(L.marker([lat, lng], { title: `${matchingRows.length} zone${matchingRows.length > 1 ? 's' : ''}`, icon: L.divIcon({ className: 'custom-marker', html: `<div style="background-color: ${markerColor};">${displayValue}</div>`, iconSize: [30, 30], iconAnchor: [15, 30] }) }).bindPopup(popupContent));
+                            layers['all'].addLayer(L.marker([lat, lng], { title: `${matchingRows.length} zone${matchingRows.length > 1 ? 's' : ''}`, icon: L.divIcon({ className: 'custom-marker', html: `<div style="background-color: ${markerColor};">${displayValue}</div>`, iconSize: [40, 40], iconAnchor: [20, 40] }) }).bindPopup(popupContent));
                         });
                     } else {
                         data.forEach(row => {
                             const lat = parseFloat(row.latitude); const lng = parseFloat(row.longitude);
                             const priceStr = row['Foreslått Autoringen Pris'] || '0';
-                            const price = parseInt(priceStr.split(',')[0]) || 0; // Take integer before comma
+                            const price = parseInt(priceStr.replace(/,.*$/, '')) || 0; // Remove everything after comma
                             let markerColor = getHeatmapColor(price); if (!row['Sub Region'] || row['Sub Region'] === '') markerColor = '#FF00FF';
                             const displayValue = price < 1000 ? price.toString().padStart(3, '0') : price.toString().padStart(4, '0');
                             let popupContent = '<ul>';
                             popupContent += `<li>${row.Region}<br>Poststed: ${row['Sub Region'] || 'N/A'}<br>Postkode: ${row.Postnummer}<br>Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>Foreslått Autoringen Pris: ${row['Foreslått Autoringen Pris'] || 'N/A'}<br>Latitude: ${lat}<br>Longitude: ${lng}<br></li>`;
                             popupContent += '</ul>';
-                            layers[sted].addLayer(L.marker([lat, lng], { title: `Price: ${displayValue} NOK`, icon: L.divIcon({ className: 'custom-marker', html: `<div style="background-color: ${markerColor};">${displayValue}</div>`, iconSize: [30, 30], iconAnchor: [15, 30] }) }).bindPopup(popupContent));
+                            layers[sted].addLayer(L.marker([lat, lng], { title: `Price: ${displayValue} NOK`, icon: L.divIcon({ className: 'custom-marker', html: `<div style="background-color: ${markerColor};">${displayValue}</div>`, iconSize: [40, 40], iconAnchor: [20, 40] }) }).bindPopup(popupContent));
                         });
                     }
                     map.eachLayer(layer => { if (layer instanceof L.LayerGroup) map.removeLayer(layer); });
