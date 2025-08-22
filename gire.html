@@ -240,10 +240,9 @@
                             if (!row['Sub Region'] || row['Sub Region'] === '') {
                                 markerColor = '#FF00FF'; // Magenta for missing/error
                             }
-                            const displayValue = row['Foreslått Autoringen Pris'] ? 
-                                (price < 1000 ? 
-                                    Math.floor(price).toString() : 
-                                    Math.floor(price).toString()) : '0';
+                            const displayValue = price < 1000 ? 
+                                price.toString().padStart(3, '0').slice(0, 3) : 
+                                price.toString().padStart(4, '0').slice(0, 4);
                             let popupContent = '<ul>';
                             popupContent += `
                                 <li>
