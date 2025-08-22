@@ -278,7 +278,14 @@
                 error: function(error) {
                     console.error('Error loading CSV:', error);
                     const errorMessage = document.getElementById('errorMessage');
-                    errorMessage.textContent = 'Error loading merged_postcodes_complete.csv. Check file path and accessibility.';
+                    let errorText = 'Error loading merged_postcodes_complete.csv. Check file path and accessibility.';
+                    if (error.message) {
+                        errorText += ` Details: ${error.message}`;
+                    }
+                    if (error.type) {
+                        errorText += ` Type: ${error.type}`;
+                    }
+                    errorMessage.textContent = errorText;
                     errorMessage.style.display = 'block';
                     map.setView([64.0, 10.0], 5);
                 }
