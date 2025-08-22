@@ -200,15 +200,15 @@
                                 markerColor = '#FF00FF'; // Magenta for missing/error
                             }
                             const displayValue = matchingRows.length > 1 ? matchingRows.length : '';
-                            let popupContent = matchingRows.length > 1 ? '<b>Multiple Delivery Zones</b><br><ul>' : '<b>Delivery Zone</b><br><ul>';
+                            let popupContent = matchingRows.length > 1 ? '<ul>' : '<ul>';
                             matchingRows.forEach(row => {
                                 popupContent += `
                                     <li>
-                                        <b>${row['Sub Region'] || 'N/A'}</b><br>
-                                        Region: ${row.Region}<br>
-                                        Postcode: ${row.Postnummer}<br>
+                                        ${row['Sub Region'] || 'N/A'}<br>
+                                        Fra: ${row.Region}<br>
+                                        Postkode: ${row.Postnummer}<br>
                                         Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>
-                                        Suggested Autoringen Price: ${row['Foreslått Autoringen Pris'] || 'N/A'}<br>
+                                        Foreslått Autoringen Pris: ${row['Foreslått Autoringen Pris'] || 'N/A'}<br>
                                         Latitude: ${lat}<br>
                                         Longitude: ${lng}<br>
                                     </li>
@@ -236,14 +236,14 @@
                                 markerColor = '#FF00FF'; // Magenta for missing/error
                             }
                             const displayValue = price.toFixed(0);
-                            let popupContent = '<b>Delivery Zone</b><br><ul>';
+                            let popupContent = '<ul>';
                             popupContent += `
                                 <li>
-                                    <b>${row['Sub Region'] || 'N/A'}</b><br>
-                                    Region: ${row.Region}<br>
-                                    Postcode: ${row.Postnummer}<br>
+                                    ${row['Sub Region'] || 'N/A'}<br>
+                                    Fra: ${row.Region}<br>
+                                    Postkode: ${row.Postnummer}<br>
                                     Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>
-                                    Suggested Autoringen Price: ${row['Foreslått Autoringen Pris'] || 'N/A'}<br>
+                                    Foreslått Autoringen Pris: ${row['Foreslått Autoringen Pris'] || 'N/A'}<br>
                                     Latitude: ${lat}<br>
                                     Longitude: ${lng}<br>
                                 </li>
