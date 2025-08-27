@@ -29,8 +29,7 @@
         .leaflet-popup-content ul { list-style-type: none; padding: 0; margin: 0; }
         .map-attribution { position: absolute; bottom: 10px; left: 20px; font-size: 10px; color: #333; background: rgba(255, 255, 255, 0.7); padding: 2px 5px; border-radius: 3px; z-index: 1000; }
         .search-container {
-            position: absolute;
-            bottom: 50px; left: 50px; z-index: 1000;
+            position: absolute; bottom: 50px; left: 50px; z-index: 1000;
             background: rgba(255, 255, 255, 0.95); padding: 4px 8px; border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); backdrop-filter: blur(5px);
             display: flex; align-items: center;
@@ -72,7 +71,7 @@
     <footer></footer>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
-    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
     <script>
         const map = L.map('map', { minZoom: 5, maxZoom: 18 });
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
@@ -85,8 +84,6 @@
             'Ski': L.layerGroup()
         };
         const regionColors = { 'Bergen': '#1b8a5a', 'Trondheim': '#f68838', 'Stavanger': '#fbb021', 'Skedsmo': '#1d4877', 'Ski': '#ee3e32' };
-        const minPrice = 580; const maxPrice = 1090;
-        function getHeatmapColor(price) { const ratio = (price - minPrice) / (maxPrice - minPrice); return `hsl(${(1 - ratio) * 240}, 70%, 50%)`; }
         let allMarkers = [];
         function toggleLayer(sted) {
             Object.keys(layers).forEach(key => { layers[key].clearLayers(); document.querySelectorAll('.nav-bar a').forEach(a => a.classList.remove('active')); });
@@ -95,31 +92,35 @@
                 download: true, header: true, complete: function(results) {
                     const data = results.data.filter(row => row.Latitude && row.Longitude && !isNaN(parseFloat(row.Latitude)) && !isNaN(parseFloat(row.Longitude)) && (sted === 'all' || row.Region === sted));
                     allMarkers = [];
-                    if (sted === 'all') {
-                        const heatPoints = data.filter(row => parseFloat(row.Latitude) !== 0 && parseFloat(row.Longitude) !== 0).map(row => {
-                            const price = parseFloat(row['Suggested Autoringen Price']) || 0;
-                            return [parseFloat(row.Latitude), parseFloat(row.Longitude), price / 1090];
-                        });
-                        L.heatLayer(heatPoints, { radius: 25, blur: 15, maxZoom: 17 }).addTo(layers['all']);
-                        data.filter(row => row.RangeStart.startsWith('[MISSING]')).forEach(row => {
-                            const marker = L.marker([0, 0], {
-                                icon: L.divIcon({
-                                    className: 'custom-marker',
-                                    html: `<div style="background-color: #FF00FF;"></div>`,
-                                    iconSize: [40, 40],
-                                    iconAnchor: [20, 40]
-                                })
-                            }).bindPopup(`<ul><li>Region: ${row.Region}<br>SubRegion: ${row.SubRegion}<br>Postcode: ${row.RangeStart}<br>Gire Price: ${row['Gire Price'] || 'N/A'}<br>Autoringen Price: ${row['Autoringen Price'] || 'N/A'}<br>Suggested Price: ${row['Suggested Autoringen Price'] || 'N/A'}<br>Distance: ${row.Distance_km} km</li></ul>`);
-                            layers['all'].addLayer(marker);
-                            allMarkers.push({ lat: 0, lng: 0, subRegion: row.SubRegion || 'N/A' });
-                        });
-                    } else {
-                        const heatPoints = data.filter(row => parseFloat(row.Latitude) !== 0 && parseFloat(row.Longitude) !== 0).map(row => {
-                            const price = parseFloat(row['Suggested Autoringen Price']) || 0;
-                            return [parseFloat(row.Latitude), parseFloat(row.Longitude), price / 1090];
-                        });
-                        L.heatLayer(heatPoints, { radius: 25, blur: 15, maxZoom: 17 }).addTo(layers[sted]);
-                        data.filter(row => row.RangeStart.startsWith('[MISSING]')).forEach(row => {
+                    const regions = sted === 'all' ? ['Bergen', 'Trondheim', 'Stavanger', 'Skedsmo', 'Ski'] : [sted];
+                    regions.forEach(region => {
+                        const regionData = data.filter(row => row.Region === region && parseFloat(row.Latitude) !== 0 && parseFloat(row.Longitude) !== 0);
+                        if (regionData.length > 0) {
+                            const points = regionData.map(row => ({
+                                type: 'Feature',
+                                geometry: { type: 'Point', coordinates: [parseFloat(row.Longitude), parseFloat(row.Latitude)] },
+                                properties: { Region: row.Region, SubRegion: row.SubRegion, Postcode: row.RangeStart, AutoringenPrice: row['Autoringen Price'], SuggestedPrice: row['Suggested Autoringen Price'], Distance: row.Distance_km }
+                            }));
+                            const featureCollection = { type: 'FeatureCollection', features: points };
+                            const hull = turf.convex(featureCollection);
+                            if (hull) {
+                                L.geoJSON(hull, {
+                                    style: {
+                                        fillColor: regionColors[region],
+                                        weight: 2,
+                                        opacity: 1,
+                                        color: 'white',
+                                        fillOpacity: 0.5
+                                    },
+                                    onEachFeature: (feature, layer) => {
+                                        const postcodes = regionData.map(row => row.RangeStart).join(', ');
+                                        layer.bindPopup(`<b>${region} Delivery Zone</b><br>Postcodes: ${postcodes}<br>Autoringen Price: ${regionData[0]['Autoringen Price']}<br>Suggested Price: ${regionData[0]['Suggested Autoringen Price']}`);
+                                    }
+                                }).addTo(layers[sted]);
+                            }
+                        }
+                        const missingData = data.filter(row => row.Region === region && row.RangeStart.startsWith('[MISSING]'));
+                        missingData.forEach(row => {
                             const marker = L.marker([0, 0], {
                                 icon: L.divIcon({
                                     className: 'custom-marker',
@@ -131,7 +132,7 @@
                             layers[sted].addLayer(marker);
                             allMarkers.push({ lat: 0, lng: 0, subRegion: row.SubRegion || 'N/A' });
                         });
-                    }
+                    });
                     map.eachLayer(layer => { if (layer instanceof L.LayerGroup) map.removeLayer(layer); });
                     map.addLayer(layers[sted]);
                     if (data.length > 0) {
