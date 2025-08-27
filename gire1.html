@@ -6,8 +6,6 @@
     <title>Forslag til Gire Soner</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
     <style>
         body { font-family: 'Roboto', sans-serif; margin: 0; padding: 0; background: #f4f4f4; color: #333; font-size: 16px; }
         header { background: #003087; color: #fff; padding: 15px; text-align: center; }
@@ -32,30 +30,16 @@
         .map-attribution { position: absolute; bottom: 10px; left: 20px; font-size: 10px; color: #333; background: rgba(255, 255, 255, 0.7); padding: 2px 5px; border-radius: 3px; z-index: 1000; }
         .search-container {
             position: absolute;
-            bottom: 50px; /* 50px from bottom */
-            left: 50px; /* 50px from left border */
-            z-index: 1000;
-            background: rgba(255, 255, 255, 0.95); /* Light background */
-            padding: 4px 8px; /* Reduced frame */
-            border-radius: 10px; /* Smooth, Apple-like curve */
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); /* Glossy shadow */
-            backdrop-filter: blur(5px); /* Liquid effect */
-            display: flex;
-            align-items: center;
+            bottom: 50px; left: 50px; z-index: 1000;
+            background: rgba(255, 255, 255, 0.95); padding: 4px 8px; border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); backdrop-filter: blur(5px);
+            display: flex; align-items: center;
         }
         .search-container input {
-            padding: 5px;
-            font-size: 14px;
-            border: none; /* Remove default border */
-            background: transparent; /* Match liquid background */
-            width: 180px;
-            outline: none;
-            color: #333;
-            transition: color 0.3s;
+            padding: 5px; font-size: 14px; border: none; background: transparent;
+            width: 180px; outline: none; color: #333; transition: color 0.3s;
         }
-        .search-container input:focus {
-            color: #003087; /* Apple-like focus color */
-        }
+        .search-container input:focus { color: #003087; }
         @media (max-width: 600px) {
             .nav-bar a { display: block; margin: 5px auto; width: 80%; }
             h1 { font-size: 1.3em; }
@@ -79,7 +63,7 @@
     </div>
     <div class="map-container">
         <div id="map"></div>
-        <div class="map-attribution">Powered by OpenStreetMap | Autoringen | Postnummerdata frå Erik Bolstad</div>
+        <div class="map-attribution">Powered by OpenStreetMap | Autoringen | Postnummerdata frå <a href="http://www.erikbolstad.no/postnummer/" target="_blank">Erik Bolstad</a></div>
         <div class="search-container">
             <input type="text" id="searchInput" placeholder="Søk poststed" onkeyup="searchSubRegion()">
         </div>
@@ -88,131 +72,91 @@
     <footer></footer>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
-    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     <script>
         const map = L.map('map', { minZoom: 5, maxZoom: 18 });
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
         const layers = {
-            'all': L.markerClusterGroup({
-                maxClusterRadius: 35,
-                iconCreateFunction: function(cluster) {
-                    return L.divIcon({
-                        html: '<div style="background-color: #666;"></div>',
-                        className: 'custom-marker',
-                        iconSize: [40, 40],
-                        iconAnchor: [20, 40]
-                    });
-                }
-            }),
-            'Skedsmo': L.markerClusterGroup({
-                maxClusterRadius: 25,
-                iconCreateFunction: function(cluster) {
-                    return L.divIcon({
-                        html: '<div style="background-color: #1d4877;"></div>',
-                        className: 'custom-marker',
-                        iconSize: [40, 40],
-                        iconAnchor: [20, 40]
-                    });
-                }
-            }),
-            'Bergen': L.markerClusterGroup({
-                maxClusterRadius: 25,
-                iconCreateFunction: function(cluster) {
-                    return L.divIcon({
-                        html: '<div style="background-color: #1b8a5a;"></div>',
-                        className: 'custom-marker',
-                        iconSize: [40, 40],
-                        iconAnchor: [20, 40]
-                    });
-                }
-            }),
-            'Stavanger': L.markerClusterGroup({
-                maxClusterRadius: 25,
-                iconCreateFunction: function(cluster) {
-                    return L.divIcon({
-                        html: '<div style="background-color: #fbb021;"></div>',
-                        className: 'custom-marker',
-                        iconSize: [40, 40],
-                        iconAnchor: [20, 40]
-                    });
-                }
-            }),
-            'Trondheim': L.markerClusterGroup({
-                maxClusterRadius: 25,
-                iconCreateFunction: function(cluster) {
-                    return L.divIcon({
-                        html: '<div style="background-color: #f68838;"></div>',
-                        className: 'custom-marker',
-                        iconSize: [40, 40],
-                        iconAnchor: [20, 40]
-                    });
-                }
-            }),
-            'Ski': L.markerClusterGroup({
-                maxClusterRadius: 25,
-                iconCreateFunction: function(cluster) {
-                    return L.divIcon({
-                        html: '<div style="background-color: #ee3e32;"></div>',
-                        className: 'custom-marker',
-                        iconSize: [40, 40],
-                        iconAnchor: [20, 40]
-                    });
-                }
-            })
+            'all': L.layerGroup(),
+            'Skedsmo': L.layerGroup(),
+            'Bergen': L.layerGroup(),
+            'Stavanger': L.layerGroup(),
+            'Trondheim': L.layerGroup(),
+            'Ski': L.layerGroup()
         };
         const regionColors = { 'Bergen': '#1b8a5a', 'Trondheim': '#f68838', 'Stavanger': '#fbb021', 'Skedsmo': '#1d4877', 'Ski': '#ee3e32' };
         const minPrice = 580; const maxPrice = 1090;
         function getHeatmapColor(price) { const ratio = (price - minPrice) / (maxPrice - minPrice); return `hsl(${(1 - ratio) * 240}, 70%, 50%)`; }
-        let allMarkers = []; // To store all markers for searching
+        let allMarkers = [];
         function toggleLayer(sted) {
             Object.keys(layers).forEach(key => { layers[key].clearLayers(); document.querySelectorAll('.nav-bar a').forEach(a => a.classList.remove('active')); });
             document.querySelector(`.nav-bar a[onclick="toggleLayer('${sted}')"]`).classList.add('active');
-            Papa.parse('./merged_postcodes_complete.csv', {
+            Papa.parse('./reconciled_boundary_postcodes.csv', {
                 download: true, header: true, complete: function(results) {
-                    const data = results.data.filter(row => row.latitude && row.longitude && !isNaN(parseFloat(row.latitude)) && !isNaN(parseFloat(row.longitude)) && (sted === 'all' || row.Region === sted));
-                    allMarkers = []; // Reset markers array
+                    const data = results.data.filter(row => row.Latitude && row.Longitude && !isNaN(parseFloat(row.Latitude)) && !isNaN(parseFloat(row.Longitude)) && (sted === 'all' || row.Region === sted));
+                    allMarkers = [];
                     if (sted === 'all') {
-                        const uniqueCoords = new Set(); data.forEach(row => uniqueCoords.add(`${parseFloat(row.latitude).toFixed(6)},${parseFloat(row.longitude).toFixed(6)}`));
-                        uniqueCoords.forEach(coordKey => {
-                            const [lat, lng] = coordKey.split(',').map(parseFloat);
-                            const matchingRows = data.filter(row => `${parseFloat(row.latitude).toFixed(6)},${parseFloat(row.longitude).toFixed(6)}` === coordKey);
-                            const primaryRegion = matchingRows[0].Region; const isMissing = !matchingRows[0]['Sub Region'] || matchingRows[0]['Sub Region'] === '';
-                            let markerColor = regionColors[primaryRegion] || '#000000'; if (isMissing) markerColor = '#FF00FF';
-                            const displayValue = matchingRows.length > 1 ? '' : '';
-                            let popupContent = matchingRows.length > 1 ? '<ul>' : '<ul>';
-                            matchingRows.forEach(row => {
-                                popupContent += `<li>${row.Region}<br>Poststed: ${row['Sub Region'] || 'N/A'}<br>Postkode: ${row.Postnummer}<br>Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>Foreslått Autoringen Pris: ${row['Foreslått Autoringen Pris'] || 'N/A'}<br>Latitude: ${lat}<br>Longitude: ${lng}<br></li>`;
-                                allMarkers.push({ lat: lat, lng: lng, subRegion: row['Sub Region'] || 'N/A' });
-                            });
-                            popupContent += '</ul>';
-                            layers['all'].addLayer(L.marker([lat, lng], { title: `${matchingRows.length} zone${matchingRows.length > 1 ? 's' : ''}`, icon: L.divIcon({ className: 'custom-marker', html: `<div style="background-color: ${markerColor};">${displayValue}</div>`, iconSize: [40, 40], iconAnchor: [20, 40] }) }).bindPopup(popupContent));
+                        const heatPoints = data.filter(row => parseFloat(row.Latitude) !== 0 && parseFloat(row.Longitude) !== 0).map(row => {
+                            const price = parseFloat(row['Suggested Autoringen Price']) || 0;
+                            return [parseFloat(row.Latitude), parseFloat(row.Longitude), price / 1090];
+                        });
+                        L.heatLayer(heatPoints, { radius: 25, blur: 15, maxZoom: 17 }).addTo(layers['all']);
+                        data.filter(row => row.RangeStart.startsWith('[MISSING]')).forEach(row => {
+                            const marker = L.marker([0, 0], {
+                                icon: L.divIcon({
+                                    className: 'custom-marker',
+                                    html: `<div style="background-color: #FF00FF;"></div>`,
+                                    iconSize: [40, 40],
+                                    iconAnchor: [20, 40]
+                                })
+                            }).bindPopup(`<ul><li>Region: ${row.Region}<br>SubRegion: ${row.SubRegion}<br>Postcode: ${row.RangeStart}<br>Gire Price: ${row['Gire Price'] || 'N/A'}<br>Autoringen Price: ${row['Autoringen Price'] || 'N/A'}<br>Suggested Price: ${row['Suggested Autoringen Price'] || 'N/A'}<br>Distance: ${row.Distance_km} km</li></ul>`);
+                            layers['all'].addLayer(marker);
+                            allMarkers.push({ lat: 0, lng: 0, subRegion: row.SubRegion || 'N/A' });
                         });
                     } else {
-                        data.forEach(row => {
-                            const lat = parseFloat(row.latitude); const lng = parseFloat(row.longitude);
-                            const priceStr = row['Foreslått Autoringen Pris'] || '0';
-                            const price = parseInt(priceStr.replace(/[^0-9]/g, '')) || 0;
-                            let markerColor = getHeatmapColor(price); if (!row['Sub Region'] || row['Sub Region'] === '') markerColor = '#FF00FF';
-                            const displayValue = price < 1000 ? price.toString().padStart(3, '0') : price.toString().padStart(4, '0');
-                            let popupContent = '<ul>';
-                            popupContent += `<li>${row.Region}<br>Poststed: ${row['Sub Region'] || 'N/A'}<br>Postkode: ${row.Postnummer}<br>Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>Foreslått Autoringen Pris: ${row['Foreslått Autoringen Pris'] || 'N/A'}<br>Latitude: ${lat}<br>Longitude: ${lng}<br></li>`;
-                            popupContent += '</ul>';
-                            const marker = L.marker([lat, lng], { title: `Price: ${displayValue} NOK`, icon: L.divIcon({ className: 'custom-marker', html: `<div style="background-color: ${markerColor};">${displayValue}</div>`, iconSize: [40, 40], iconAnchor: [20, 40] }) }).bindPopup(popupContent);
+                        const heatPoints = data.filter(row => parseFloat(row.Latitude) !== 0 && parseFloat(row.Longitude) !== 0).map(row => {
+                            const price = parseFloat(row['Suggested Autoringen Price']) || 0;
+                            return [parseFloat(row.Latitude), parseFloat(row.Longitude), price / 1090];
+                        });
+                        L.heatLayer(heatPoints, { radius: 25, blur: 15, maxZoom: 17 }).addTo(layers[sted]);
+                        data.filter(row => row.RangeStart.startsWith('[MISSING]')).forEach(row => {
+                            const marker = L.marker([0, 0], {
+                                icon: L.divIcon({
+                                    className: 'custom-marker',
+                                    html: `<div style="background-color: #FF00FF;"></div>`,
+                                    iconSize: [40, 40],
+                                    iconAnchor: [20, 40]
+                                })
+                            }).bindPopup(`<ul><li>Region: ${row.Region}<br>SubRegion: ${row.SubRegion}<br>Postcode: ${row.RangeStart}<br>Gire Price: ${row['Gire Price'] || 'N/A'}<br>Autoringen Price: ${row['Autoringen Price'] || 'N/A'}<br>Suggested Price: ${row['Suggested Autoringen Price'] || 'N/A'}<br>Distance: ${row.Distance_km} km</li></ul>`);
                             layers[sted].addLayer(marker);
-                            allMarkers.push({ lat: lat, lng: lng, subRegion: row['Sub Region'] || 'N/A' });
+                            allMarkers.push({ lat: 0, lng: 0, subRegion: row.SubRegion || 'N/A' });
                         });
                     }
                     map.eachLayer(layer => { if (layer instanceof L.LayerGroup) map.removeLayer(layer); });
                     map.addLayer(layers[sted]);
-                    if (data.length > 0) { const bounds = L.latLngBounds([]); data.forEach(row => bounds.extend([parseFloat(row.latitude), parseFloat(row.longitude)])); if (bounds.isValid()) map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 }); else map.setView([64.0, 10.0], 5); } else map.setView([64.0, 10.0], 5);
+                    if (data.length > 0) {
+                        const bounds = L.latLngBounds([]);
+                        data.forEach(row => {
+                            if (parseFloat(row.Latitude) !== 0 && parseFloat(row.Longitude) !== 0) {
+                                bounds.extend([parseFloat(row.Latitude), parseFloat(row.Longitude)]);
+                            }
+                        });
+                        if (bounds.isValid()) map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+                        else map.setView([64.0, 10.0], 5);
+                    } else map.setView([64.0, 10.0], 5);
                     map.invalidateSize();
-                }, error: function(error) { console.error('Error loading CSV:', error); document.getElementById('errorMessage').textContent = 'Error loading merged_postcodes_complete.csv. Check file path.'; document.getElementById('errorMessage').style.display = 'block'; map.setView([64.0, 10.0], 5); }
+                }, error: function(error) {
+                    console.error('Error loading CSV:', error);
+                    document.getElementById('errorMessage').textContent = 'Error loading reconciled_boundary_postcodes.csv. Check file path.';
+                    document.getElementById('errorMessage').style.display = 'block';
+                    map.setView([64.0, 10.0], 5);
+                }
             });
         }
         function searchSubRegion() {
             const searchValue = document.getElementById('searchInput').value.toLowerCase();
             map.eachLayer(layer => {
-                if (layer instanceof L.MarkerClusterGroup) {
+                if (layer instanceof L.LayerGroup) {
                     layer.eachLayer(marker => {
                         const markerData = allMarkers.find(m => m.lat === marker.getLatLng().lat && m.lng === marker.getLatLng().lng);
                         if (markerData && markerData.subRegion.toLowerCase().includes(searchValue)) {
