@@ -191,13 +191,25 @@
               popupContent += `${key}: ${value}<br>`;
             }
           });
-          popupContent += `Adresse: ${station.address}</li></ul>`;
+          popupContent += `</li></ul>`;
           const marker = L.marker([station.lat, station.lng], {
             title: station.Stasjon,
             icon: icon
           }).bindPopup(popupContent, { autoClose: false });
-          marker.on('mouseover', function() { this.openPopup(); });
-          marker.on('mouseout', function() { this.closePopup(); });
+          let isClicked = false;
+          marker.on('click', function() {
+            isClicked = true;
+            this.openPopup();
+          });
+          marker.on('mouseover', function() {
+            if (!isClicked) this.openPopup();
+          });
+          marker.on('mouseout', function() {
+            if (!isClicked) this.closePopup();
+          });
+          marker.on('popupclose', function() {
+            isClicked = false;
+          });
           layers['all'].addLayer(marker);
           allMarkers.push({ lat: station.lat, lng: station.lng, address: station.address });
         });
@@ -215,15 +227,27 @@
               popupContent += `${key}: ${value}<br>`;
             }
           });
-          popupContent += `Adresse: ${station.address}</li></ul>`;
+          popupContent += `</li></ul>`;
           const marker = L.marker([station.lat, station.lng], {
             title: station.Stasjon,
             icon: icon
           }).bindPopup(popupContent, { autoClose: false });
-          marker.on('mouseover', function() { this.openPopup(); });
-          marker.on('mouseout', function() { this.closePopup(); });
+          let isClicked = false;
+          marker.on('click', function() {
+            isClicked = true;
+            this.openPopup();
+          });
+          marker.on('mouseover', function() {
+            if (!isClicked) this.openPopup();
+          });
+          marker.on('mouseout', function() {
+            if (!isClicked) this.closePopup();
+          });
+          marker.on('popupclose', function() {
+            isClicked = false;
+          });
           layers[type].addLayer(marker);
-          allMarkers.push({ lat: station.lat, lng: station.lng, address: station.address });
+          allMarkers.push({ lat: system.lat, lng: station.lng, address: station.address });
         });
       }
       map.eachLayer(layer => { if (layer instanceof L.LayerGroup) map.removeLayer(layer); });
