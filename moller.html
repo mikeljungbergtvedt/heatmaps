@@ -134,22 +134,6 @@
 
     let allMarkers = [];
 
-    async function geocodeAddress(address) {
-      try {
-        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&countrycodes=no&addressdetails=1`;
-        const response = await fetch(url, { headers: { 'User-Agent': 'MøllerInnkjøp/1.0' } });
-        const data = await response.json();
-        if (data.length > 0) {
-          return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-        }
-        console.warn(`No coordinates found for address: ${address}`);
-        return null;
-      } catch (error) {
-        console.error(`Geocoding error for ${address}:`, error);
-        return null;
-      }
-    }
-
     async function loadExcelData() {
       try {
         const response = await fetch('./Møller Innkjøp stasjoner.xlsx');
@@ -168,24 +152,41 @@
 
         const vikingStations = [];
         const nafStations = [];
+        const seenStations = new Set();
 
         for (const row of vikingData) {
-          const address = `${row.Adresse || row.Address || ''}, ${row.By || row.City || ''}, ${row.Postnummer || row['Postal Code'] || ''}`.trim();
-          const coords = row.latitude && row.longitude && !isNaN(parseFloat(row.latitude)) && !isNaN(parseFloat(row.longitude)) ? 
-            { lat: parseFloat(row.latitude), lng: parseFloat(row.longitude) } : 
-            await geocodeAddress(address);
-          if (coords) {
-            vikingStations.push({ ...row, address, lat: coords.lat, lng: coords.lng, type: 'viking' });
+          const stationKey = `${row.Stasjon}|${row.Adresse}|${row.Postnummer}`;
+          if (seenStations.has(stationKey)) continue;
+          seenStations.add(stationKey);
+
+          const lat = parseFloat(row.Latitude);
+          const lng = parseFloat(row.Longitude);
+          if (!isNaN(lat) && !isNaN(lng)) {
+            vikingStations.push({
+              ...row,
+              address: `${row.Adresse}, ${row.Poststed}, ${row.Postnummer}`,
+              lat,
+              lng,
+              type: 'viking'
+            });
           }
         }
 
         for (const row of nafData) {
-          const address = `${row.Adresse || row.Address || ''}, ${row.By || row.City || ''}, ${row.Postnummer || row['Postal Code'] || ''}`.trim();
-          const coords = row.latitude && row.longitude && !isNaN(parseFloat(row.latitude)) && !isNaN(parseFloat(row.longitude)) ? 
-            { lat: parseFloat(row.latitude), lng: parseFloat(row.longitude) } : 
-            await geocodeAddress(address);
-          if (coords) {
-            nafStations.push({ ...row, address, lat: coords.lat, lng: coords.lng, type: 'naf' });
+          const stationKey = `${row.Stasjon}|${row.Adresse}|${row.Postnummer}`;
+          if (seenStations.has(stationKey)) continue;
+          seenStations.add(stationKey);
+
+          const lat = parseFloat(row.Latitude);
+          const lng = parseFloat(row.Longitude);
+          if (!isNaN(lat) && !isNaN(lng)) {
+            nafStations.push({
+              ...row,
+              address: `${row.Adresse}, ${row.Poststed}, ${row.Postnummer}`,
+              lat,
+              lng,
+              type: 'naf'
+            });
           }
         }
 
@@ -209,82 +210,40 @@
       allMarkers = [];
 
       if (type === 'all') {
-        const uniqueCoords = new Set();
-        [...vikingStations, ...nafStations].forEach(station => {
-          uniqueCoords.add(`${station.lat.toFixed(6)},${station.lng.toFixed(6)}`);
-        });
-
-        uniqueCoords.forEach(coordKey => {
-          const [lat, lng] = coordKey.split(',').map(parseFloat);
-          const matchingStations = [...vikingStations, ...nafStations].filter(
-            station => `${station.lat.toFixed(6)},${station.lng.toFixed(6)}` === coordKey
-          );
-          const icon = matchingStations.some(s => s.type === 'viking') ? redFlagIcon : yellowFlagIcon;
-          let popupContent = '<ul>';
-          matchingStations.forEach(station => {
-            popupContent += `<li><b>${station.type.toUpperCase()} Station</b><br>`;
-            Object.entries(station).forEach(([key, value]) => {
-              if (key !== 'lat' && key !== 'lng' && key !== 'type' && value) {
-                popupContent += `${key}: ${value}<br>`;
-              }
-            });
-            popupContent += '</li>';
-            allMarkers.push({ lat, lng, address: station.address });
+        const stations = [...vikingStations, ...nafStations];
+        stations.forEach(station => {
+          const icon = station.type === 'viking' ? redFlagIcon : yellowFlagIcon;
+          let popupContent = `<ul><li><b>${station.type.toUpperCase()} Station</b><br>`;
+          Object.entries(station).forEach(([key, value]) => {
+            if (key !== 'lat' && key !== 'lng' && key !== 'type' && key !== 'address' && value) {
+              popupContent += `${key}: ${value}<br>`;
+            }
           });
-          popupContent += '</ul>';
-          layers['all'].addLayer(L.marker([lat, lng], {
-            title: `${matchingStations.length} station${matchingStations.length > 1 ? 's' : ''}`,
+          popupContent += `Adresse: ${station.address}</li></ul>`;
+          const marker = L.marker([station.lat, station.lng], {
+            title: station.Stasjon,
             icon: icon
-          }).bindPopup(popupContent));
+          }).bindPopup(popupContent);
+          layers['all'].addLayer(marker);
+          allMarkers.push({ lat: station.lat, lng: station.lng, address: station.address });
         });
       } else {
         const stations = type === 'viking' ? vikingStations : nafStations;
-        const groupedStations = [];
-        const processed = new Set();
-        const XX_PIXELS = 50;
-
-        stations.forEach((station, i) => {
-          if (processed.has(i)) return;
-          processed.add(i);
-          const group = [station];
-          const pointA = map.latLngToContainerPoint([station.lat, station.lng]);
-
-          stations.forEach((otherStation, j) => {
-            if (i === j || processed.has(j)) return;
-            const pointB = map.latLngToContainerPoint([otherStation.lat, otherStation.lng]);
-            const distance = Math.sqrt(
-              Math.pow(pointA.x - pointB.x, 2) + Math.pow(pointA.y - pointB.y, 2)
-            );
-            if (distance <= XX_PIXELS) {
-              group.push(otherStation);
-              processed.add(j);
+        const icon = type === 'viking' ? redFlagIcon : yellowFlagIcon;
+        stations.forEach(station => {
+          let popupContent = `<ul><li><b>${station.type.toUpperCase()} Station</b><br>`;
+          Object.entries(station).forEach(([key, value]) => {
+            if (key !== 'lat' && key !== 'lng' && key !== 'type' && key !== 'address' && value) {
+              popupContent += `${key}: ${value}<br>`;
             }
           });
-          groupedStations.push(group);
-        });
-
-        groupedStations.forEach(group => {
-          if (group.length === 0) return;
-          const avgLat = group.reduce((sum, s) => sum + s.lat, 0) / group.length;
-          const avgLng = group.reduce((sum, s) => sum + s.lng, 0) / group.length;
-          const icon = type === 'viking' ? redFlagIcon : yellowFlagIcon;
-          let popupContent = '<ul>';
-          group.forEach(station => {
-            popupContent += `<li><b>${station.type.toUpperCase()} Station</b><br>`;
-            Object.entries(station).forEach(([key, value]) => {
-              if (key !== 'lat' && key !== 'lng' && key !== 'type' && value) {
-                popupContent += `${key}: ${value}<br>`;
-              }
-            });
-            popupContent += '</li>';
-            allMarkers.push({ lat: avgLat, lng: avgLng, address: station.address });
-          });
-          popupContent += '</ul>';
-
-          layers[type].addLayer(L.marker([avgLat, avgLng], {
-            title: `${group.length} station${group.length > 1 ? 's' : ''}`,
+          popupContent += `Adresse: ${station.address}</li></ul>`;
+          const marker = L.marker([station.lat, station.lng], {
+            title: station.Stasjon,
             icon: icon
-          }).bindPopup(popupContent));
+          }).bindPopup(popupContent);
+          layers[type].addLayer(marker);
+          allMarkers.push({ lat: station.lat, lng: station.lng, address: station.address });
         });
       }
 
