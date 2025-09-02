@@ -6,20 +6,32 @@
   <title>Møller Innkjøp kontrollstasjoner</title>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <style>
     body { font-family: 'Roboto', sans-serif; margin: 0; padding: 0; background: #f4f4f4; color: #333; font-size: 16px; }
-    header { background: #003087; color: #fff; padding: 15px; text-align: center; }
+    header {
+      background: #003087;
+      color: #fff;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    header .logos {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-bottom: 10px;
+    }
     header img.logo { max-width: 120px; height: auto; }
-    h1 { margin: 5px 0; font-size: 1.5em; font-weight: 400; color: #e0e0e0; text-transform: uppercase; letter-spacing: 1px; }
+    header img.moller-logo { max-width: 120px; height: auto; }
+    h1 { margin: 0; font-size: 1.5em; font-weight: 400; color: #e0e0e0; text-transform: uppercase; letter-spacing: 1px; }
     .nav-bar { max-width: 1200px; margin: 10px auto; text-align: center; }
     .nav-bar a { display: inline-block; color: #fff; text-decoration: none; padding: 10px 20px; margin: 5px; border-radius: 5px; font-weight: 700; transition: background-color 0.3s, transform 0.2s; }
     .nav-bar a:hover { transform: scale(1.05); }
     .nav-bar a.active { filter: brightness(1.2); }
     .nav-bar a.all { background: #666; }
     .nav-bar a.viking { background: #d32f2f; }
-    .nav-bar a.naf { background: #fbc02d; }
+    .nav-bar a.NAF { background: #fbc02d; }
     .map-container { max-width: 1200px; margin: 20px auto; padding: 20px; background: rgba(255, 255, 255, 0.8); border-radius: 8px; height: 80vh; position: relative; }
     #map { width: 100%; height: 100%; }
     .error-message { text-align: center; color: red; padding: 10px; display: none; }
@@ -63,13 +75,16 @@
 </head>
 <body>
   <header>
-    <img src="logo.png" alt="Autoringen Logo" class="logo">
+    <div class="logos">
+      <img src="logo.png" alt="Autoringen Logo" class="logo">
+      <img src="moller_logo.png" alt="Møller Logo" class="moller-logo">
+    </div>
     <h1>Møller Innkjøp kontrollstasjoner</h1>
   </header>
   <div class="nav-bar">
     <a href="javascript:void(0)" onclick="toggleLayer('all')" class="all active">Alle</a>
     <a href="javascript:void(0)" onclick="toggleLayer('viking')" class="viking">Viking</a>
-    <a href="javascript:void(0)" onclick="toggleLayer('naf')" class="naf">NAF</a>
+    <a href="javascript:void(0)" onclick="toggleLayer('NAF')" class="NAF">NAF</a>
   </div>
   <div class="map-container">
     <div id="map"></div>
@@ -83,7 +98,6 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script>
     const map = L.map('map', { minZoom: 5, maxZoom: 18 });
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -104,54 +118,40 @@
       popupAnchor: [0, -20]
     });
 
-    const layers = {
-      'all': L.markerClusterGroup({ maxClusterRadius: 35 }),
-      'viking': L.markerClusterGroup({
-        maxClusterRadius: 25,
-        iconCreateFunction: function(cluster) {
-          const markers = cluster.getAllChildMarkers();
-          const displayValue = markers.length > 1 ? markers.length : '';
-          return L.divIcon({
-            html: `<div style="background-color: #d32f2f; width: 20px; height: 20px; line-height: 20px; border-radius: 50%; font-size: 10px; font-weight: bold; color: #fff; text-align: center; border: 2px solid #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.3);">${displayValue}</div>`,
-            className: '',
-            iconSize: [20, 20]
-          });
-        }
-      }),
-      'naf': L.markerClusterGroup({
-        maxClusterRadius: 25,
-        iconCreateFunction: function(cluster) {
-          const markers = cluster.getAllChildMarkers();
-          const displayValue = markers.length > 1 ? markers.length : '';
-          return L.divIcon({
-            html: `<div style="background-color: #fbc02d; width: 20px; height: 20px; line-height: 20px; border-radius: 50%; font-size: 10px; font-weight: bold; color: #fff; text-align: center; border: 2px solid #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.3);">${displayValue}</div>`,
-            className: '',
-            iconSize: [20, 20]
-          });
-        }
-      })
-    };
-
     let allMarkers = [];
+
+    // Cache key with current date and time
+    const CACHE_KEY = 'stationData_20250902_1508'; // Based on 03:08 PM CEST, September 02, 2025
+    const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 
     async function loadExcelData() {
       try {
-        const response = await fetch('./Møller Innkjøp stasjoner.xlsx');
+        // Check cache
+        const cachedData = localStorage.getItem(CACHE_KEY);
+        if (cachedData) {
+          const { data, timestamp } = JSON.parse(cachedData);
+          if (Date.now() - timestamp < CACHE_DURATION) {
+            console.log('Loading from cache');
+            return data;
+          }
+        }
+
+        const response = await fetch('./Møller Innkjøp kontrollstasjoner.xlsx');
         if (!response.ok) throw new Error('Failed to load Excel file');
         const arrayBuffer = await response.arrayBuffer();
         const workbook = XLSX.read(arrayBuffer, { type: 'array' });
 
         const vikingSheet = workbook.Sheets['Viking'];
-        const nafSheet = workbook.Sheets['NAF'];
-        if (!vikingSheet || !nafSheet) {
+        const NAFSheet = workbook.Sheets['NAF'];
+        if (!vikingSheet || !NAFSheet) {
           throw new Error('Viking or NAF sheet not found in Excel file');
         }
 
         const vikingData = XLSX.utils.sheet_to_json(vikingSheet);
-        const nafData = XLSX.utils.sheet_to_json(nafSheet);
+        const NAFData = XLSX.utils.sheet_to_json(NAFSheet);
 
         const vikingStations = [];
-        const nafStations = [];
+        const NAFStations = [];
         const seenStations = new Set();
 
         console.log('Viking Data:', vikingData);
@@ -176,8 +176,8 @@
           }
         }
 
-        console.log('NAF Data:', nafData);
-        for (const row of nafData) {
+        console.log('NAF Data:', NAFData);
+        for (const row of NAFData) {
           const stationKey = `${row.Stasjon}|${row.Adresse}|${row.Postnummer}`;
           if (seenStations.has(stationKey)) continue;
           seenStations.add(stationKey);
@@ -186,41 +186,41 @@
           const lng = parseFloat(row.Longitude); // Column F
           console.log(`NAF ${row.Stasjon}: Latitude ${lat}, Longitude ${lng}`);
           if (!isNaN(lat) && !isNaN(lng)) {
-            nafStations.push({
+            NAFStations.push({
               ...row,
               address: [row.Adresse, row.Poststed, row.Postnummer].filter(Boolean).join(', '),
               lat,
               lng,
-              type: 'naf'
+              type: 'NAF'
             });
           } else {
             console.warn(`Invalid coordinates for ${row.Stasjon}: Latitude ${lat}, Longitude ${lng}`);
           }
         }
 
-        console.log('Viking Stations:', vikingStations);
-        console.log('NAF Stations:', nafStations);
-        return { vikingStations, nafStations };
+        const data = { vikingStations, NAFStations };
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
+        console.log('Cached new data');
+        return data;
       } catch (error) {
         console.error('Error loading Excel file:', error);
-        document.getElementById('errorMessage').textContent = 'Error loading Møller Innkjøp stasjoner.xlsx. Check file path.';
+        document.getElementById('errorMessage').textContent = 'Error loading Møller Innkjøp kontrollstasjoner.xlsx. Check file path.';
         document.getElementById('errorMessage').style.display = 'block';
-        return { vikingStations: [], nafStations: [] };
+        return { vikingStations: [], NAFStations: [] };
       }
     }
 
     async function toggleLayer(type) {
-      Object.keys(layers).forEach(key => {
-        layers[key].clearLayers();
-        document.querySelectorAll('.nav-bar a').forEach(a => a.classList.remove('active'));
-      });
+      // Remove existing markers
+      allMarkers.forEach(marker => map.removeLayer(marker));
+      allMarkers = [];
+      document.querySelectorAll('.nav-bar a').forEach(a => a.classList.remove('active'));
       document.querySelector(`.nav-bar a[onclick="toggleLayer('${type}')"]`).classList.add('active');
 
-      const { vikingStations, nafStations } = await loadExcelData();
-      allMarkers = [];
+      const { vikingStations, NAFStations } = await loadExcelData();
 
       if (type === 'all') {
-        const stations = [...vikingStations, ...nafStations];
+        const stations = [...vikingStations, ...NAFStations];
         if (stations.length === 0) {
           console.warn('No stations to display');
         }
@@ -233,16 +233,17 @@
               popupContent += `${key}: ${value}<br>`;
             }
           });
-          popupContent += `Adresse: ${station.address}</li></ul>`;
+          // Removed the Adresse: line from the popup
+          popupContent += '</li></ul>';
           const marker = L.marker([station.lat, station.lng], {
             title: station.Stasjon,
             icon: icon
           }).bindPopup(popupContent);
-          layers['all'].addLayer(marker);
-          allMarkers.push({ lat: station.lat, lng: station.lng, address: station.address });
+          marker.addTo(map);
+          allMarkers.push(marker);
         });
       } else {
-        const stations = type === 'viking' ? vikingStations : nafStations;
+        const stations = type === 'viking' ? vikingStations : NAFStations;
         if (stations.length === 0) {
           console.warn(`No ${type} stations to display`);
         }
@@ -255,20 +256,18 @@
               popupContent += `${key}: ${value}<br>`;
             }
           });
-          popupContent += `Adresse: ${station.address}</li></ul>`;
+          // Removed the Adresse: line from the popup
+          popupContent += '</li></ul>';
           const marker = L.marker([station.lat, station.lng], {
             title: station.Stasjon,
             icon: icon
           }).bindPopup(popupContent);
-          layers[type].addLayer(marker);
-          allMarkers.push({ lat: station.lat, lng: station.lng, address: station.address });
+          marker.addTo(map);
+          allMarkers.push(marker);
         });
       }
 
-      map.eachLayer(layer => { if (layer instanceof L.LayerGroup) map.removeLayer(layer); });
-      map.addLayer(layers[type]);
-
-      const allCoords = allMarkers.map(m => [m.lat, m.lng]);
+      const allCoords = allMarkers.map(marker => [marker.getLatLng().lat, marker.getLatLng().lng]);
       if (allCoords.length > 0) {
         const bounds = L.latLngBounds(allCoords);
         map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
@@ -281,17 +280,11 @@
 
     function searchAddress() {
       const searchValue = document.getElementById('searchInput').value.toLowerCase();
-      map.eachLayer(layer => {
-        if (layer instanceof L.MarkerClusterGroup) {
-          layer.eachLayer(marker => {
-            const markerData = allMarkers.find(m =>
-              m.lat === marker.getLatLng().lat && m.lng === marker.getLatLng().lng
-            );
-            if (markerData && markerData.address.toLowerCase().includes(searchValue)) {
-              marker.openPopup();
-              map.setView(marker.getLatLng(), 15);
-            }
-          });
+      allMarkers.forEach(marker => {
+        const popupContent = marker.getPopup().getContent();
+        if (popupContent.toLowerCase().includes(searchValue)) {
+          marker.openPopup();
+          map.setView(marker.getLatLng(), 15);
         }
       });
     }
