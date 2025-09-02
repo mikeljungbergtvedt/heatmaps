@@ -22,7 +22,7 @@
     .nav-bar a.naf { background: #fbc02d; }
     .map-container { max-width: 1200px; margin: 20px auto; padding: 20px; background: rgba(255, 255, 255, 0.8); border-radius: 8px; height: 80vh; position: relative; }
     #map { width: 100%; height: 100%; }
-    .custom-marker div { width: 40px; height: 40px; line-height: 40px; border-radius: 50%; font-size: 14px; font-weight: bold; color: #fff; text-align: center; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+    .custom-marker div { width: 20px; height: 20px; line-height: 20px; font-size: 10px; font-weight: bold; color: #fff; text-align: center; border: 2px solid #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.3); clip-path: polygon(0% 0%, 100% 0%, 100% 60%, 50% 100%, 0% 60%); }
     .error-message { text-align: center; color: red; padding: 10px; display: none; }
     .leaflet-popup-content ul { list-style-type: none; padding: 0; margin: 0; }
     .map-attribution { position: absolute; bottom: 10px; left: 20px; font-size: 10px; color: #333; background: rgba(255, 255, 255, 0.7); padding: 2px 5px; border-radius: 3px; z-index: 1000; }
@@ -56,7 +56,7 @@
       .nav-bar a { display: block; margin: 5px auto; width: 80%; }
       h1 { font-size: 1.3em; }
       .map-container { margin: 10px; padding: 10px; height: 70vh; }
-      .custom-marker div { width: 38px; height: 38px; line-height: 38px; font-size: 12px; }
+      .custom-marker div { width: 18px; height: 18px; line-height: 18px; font-size: 8px; }
       .map-attribution { font-size: 8px; }
       .search-container { bottom: 40px; left: 30px; padding: 3px 6px; }
       .search-container input { font-size: 12px; width: 140px; }
@@ -108,7 +108,8 @@
           return L.divIcon({
             html: `<div style="background-color: ${markerColor};">${displayValue}</div>`,
             className: 'custom-marker',
-            iconSize: [40, 40]
+            iconSize: [20, 20],
+            iconAnchor: [10, 20]
           });
         }
       }),
@@ -121,7 +122,8 @@
           return L.divIcon({
             html: `<div style="background-color: ${markerColor};">${displayValue}</div>`,
             className: 'custom-marker',
-            iconSize: [40, 40]
+            iconSize: [20, 20],
+            iconAnchor: [10, 20]
           });
         }
       })
@@ -131,7 +133,7 @@
 
     async function geocodeAddress(address) {
       try {
-        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json`;
+        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&countrycodes=no`;
         const response = await fetch(url, { headers: { 'User-Agent': 'MøllerInnkjøp/1.0' } });
         const data = await response.json();
         if (data.length > 0) {
@@ -165,7 +167,7 @@
         const nafStations = [];
 
         for (const row of vikingData) {
-          const address = `${row.Address || row.Adresse || ''}, ${row.City || row.By || ''}, ${row['Postal Code'] || row.Postnummer || ''}`.trim();
+          const address = `${row.Adresse || row.Address || ''}, ${row.By || row.City || ''}, ${row.Postnummer || row['Postal Code'] || ''}`.trim();
           const coords = row.latitude && row.longitude ? 
             { lat: parseFloat(row.latitude), lng: parseFloat(row.longitude) } : 
             await geocodeAddress(address);
@@ -175,7 +177,7 @@
         }
 
         for (const row of nafData) {
-          const address = `${row.Address || row.Adresse || ''}, ${row.City || row.By || ''}, ${row['Postal Code'] || row.Postnummer || ''}`.trim();
+          const address = `${row.Adresse || row.Address || ''}, ${row.By || row.City || ''}, ${row.Postnummer || row['Postal Code'] || ''}`.trim();
           const coords = row.latitude && row.longitude ? 
             { lat: parseFloat(row.latitude), lng: parseFloat(row.longitude) } : 
             await geocodeAddress(address);
@@ -227,8 +229,8 @@
             icon: L.divIcon({
               className: 'custom-marker',
               html: `<div style="background-color: ${markerColor};">${displayValue}</div>`,
-              iconSize: [40, 40],
-              iconAnchor: [20, 40]
+              iconSize: [20, 20],
+              iconAnchor: [10, 20]
             })
           }).bindPopup(popupContent));
         });
@@ -276,8 +278,8 @@
             icon: L.divIcon({
               className: 'custom-marker',
               html: `<div style="background-color: ${markerColor};">${displayValue}</div>`,
-              iconSize: [40, 40],
-              iconAnchor: [20, 40]
+              iconSize: [20, 20],
+              iconAnchor: [10, 20]
             })
           }).bindPopup(popupContent));
         });
