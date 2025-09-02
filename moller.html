@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="nb-NO">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Møller Innkjøp kontroll stasjoner</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+  <style>
+    body { font-family: 'Roboto', sans-serif; margin: 0; padding: 0; background: #f4f4f4; color: #333; font-size: 16px; }
+    header { background: #003087; color: #fff; padding: 15px; text-align: center; }
+    header img.logo { max-width: 120px; height: auto; }
+    h1 { margin: 5px 0; font-size: 1.5em; font-weight: 400; color: #e0e0e0; text-transform: uppercase; letter-spacing: 1px; }
+    .nav-bar { max-width: 1200px; margin: 10px auto; text-align: center; }
+    .nav-bar a { display: inline-block; color: #fff; text-decoration: none; padding: 10px 20px; margin: 5px; border-radius: 5px; font-weight: 700; transition: background-color 0.3s, transform 0.2s; }
+    .nav-bar a:hover { transform: scale(1.05); }
+    .nav-bar a.active { filter: brightness(1.2); }
+    .nav-bar a.all { background: #666; }
+    .nav-bar a.viking { background: #d32f2f; }
+    .nav-bar a.naf { background: #fbc02d; }
+    .map-container { max-width: 1200px; margin: 20px auto; padding: 20px; background: rgba(255, 255, 255, 0.8); border-radius: 8px; height: 80vh; position: relative; }
+    #map { width: 100%; height: 100%; }
+    .custom-marker div { width: 40px; height: 40px; line-height: 40px; border-radius: 50%; font-size: 14px; font-weight: bold; color: #fff; text-align: center; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+    .error-message { text-align: center; color: red; padding: 10px; display: none; }
+    .leaflet-popup-content ul { list-style-type: none; padding: 0; margin: 0; }
+    .map-attribution { position: absolute; bottom: 10px; left: 20px; font-size: 10px; color: #333; background: rgba(255, 255, 255, 0.7); padding: 2px 5px; border-radius: 3px; z-index: 1000; }
+    .search-container {
+      position: absolute;
+      bottom: 50px;
+      left: 50px;
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 4px 8px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      backdrop-filter: blur(5px);
+      display: flex;
+      align-items: center;
+    }
+    .search-container input {
+      padding: 5px;
+      font-size: 14px;
+      border: none;
+      background: transparent;
+      width: 180px;
+      outline: none;
+      color: #333;
+      transition: color 0.3s;
+    }
+    .search-container input:focus {
+      color: #003087;
+    }
+    @media (max-width: 600px) {
+      .nav-bar a { display: block; margin: 5px auto; width: 80%; }
+      h1 { font-size: 1.3em; }
+      .map-container { margin: 10px; padding: 10px; height: 70vh; }
+      .custom-marker div { width: 38px; height: 38px; line-height: 38px; font-size: 12px; }
+      .map-attribution { font-size: 8px; }
+      .search-container { bottom: 40px; left: 30px; padding: 3px 6px; }
+      .search-container input { font-size: 12px; width: 140px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="logo.png" alt="Autoringen Logo" class="logo">
+    <h1>Møller Innkjøp kontroll stasjoner</h1>
+  </header>
+  <div class="nav-bar">
+    <a href="javascript:void(0)" onclick="toggleLayer('all')" class="all active">Alle</a>
+    <a href="javascript:void(0)" onclick="toggleLayer('viking')" class="viking">Viking</a>
+    <a href="javascript:void(0)" onclick="toggleLayer('naf')" class="naf">NAF</a>
+  </div>
+  <div class="map-container">
+    <div id="map"></div>
+    <div class="map-attribution">Powered by OpenStreetMap | Autoringen</div>
+    <div class="search-container">
+      <input type="text" id="searchInput" placeholder="Søk adresse" onkeyup="searchAddress()">
+    </div>
+  </div>
+  <div class="error-message" id="errorMessage"></div>
+  <footer></footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script>
+    const map = L.map('map', { minZoom: 5, maxZoom: 18 });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
+
+    const markerColors = {
+      'viking': '#d32f2f', // Red for Viking
+      'naf': '#fbc02d' // Yellow for NAF
+    };
+
+    const layers = {
+      'all': L.markerClusterGroup({ maxClusterRadius: 35 }),
+      'viking': L.markerClusterGroup({
+        maxClusterRadius: 25,
+        iconCreateFunction: function(cluster) {
+          const markers = cluster.getAllChildMarkers();
+          const markerColor = markerColors['viking'];
+          const displayValue = markers.length > 1 ? markers.length : '';
+          return L.divIcon({
+            html: `<div style="background-color: ${markerColor};">${displayValue}</div>`,
+            className: 'custom-marker',
+            iconSize: [40, 40]
+          });
+        }
+      }),
+      'naf': L.markerClusterGroup({
+        maxClusterRadius: 25,
+        iconCreateFunction: function(cluster) {
+          const markers = cluster.getAllChildMarkers();
+          const markerColor = markerColors['naf'];
+          const displayValue = markers.length > 1 ? markers.length : '';
+          return L.divIcon({
+            html: `<div style="background-color: ${markerColor};">${displayValue}</div>`,
+            className: 'custom-marker',
+            iconSize: [40, 40]
+          });
+        }
+      })
+    };
+
+    let allMarkers = [];
+
+    async function geocodeAddress(address) {
+      try {
+        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json`;
+        const response = await fetch(url, { headers: { 'User-Agent': 'MøllerInnkjøp/1.0' } });
+        const data = await response.json();
+        if (data.length > 0) {
+          return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+        }
+        console.warn(`No coordinates found for address: ${address}`);
+        return null;
+      } catch (error) {
+        console.error(`Geocoding error for ${address}:`, error);
+        return null;
+      }
+    }
+
+    async function loadExcelData() {
+      try {
+        const response = await fetch('./Møller Innkjøp stasjoner.xlsx');
+        if (!response.ok) throw new Error('Failed to load Excel file');
+        const arrayBuffer = await response.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+
+        const vikingSheet = workbook.Sheets['Viking'];
+        const nafSheet = workbook.Sheets['NAF'];
+        if (!vikingSheet || !nafSheet) {
+          throw new Error('Viking or NAF sheet not found in Excel file');
+        }
+
+        const vikingData = XLSX.utils.sheet_to_json(vikingSheet);
+        const nafData = XLSX.utils.sheet_to_json(nafSheet);
+
+        const vikingStations = [];
+        const nafStations = [];
+
+        for (const row of vikingData) {
+          const address = `${row.Address || row.Adresse || ''}, ${row.City || row.By || ''}, ${row['Postal Code'] || row.Postnummer || ''}`.trim();
+          const coords = row.latitude && row.longitude ? 
+            { lat: parseFloat(row.latitude), lng: parseFloat(row.longitude) } : 
+            await geocodeAddress(address);
+          if (coords) {
+            vikingStations.push({ address, lat: coords.lat, lng: coords.lng, type: 'viking' });
+          }
+        }
+
+        for (const row of nafData) {
+          const address = `${row.Address || row.Adresse || ''}, ${row.City || row.By || ''}, ${row['Postal Code'] || row.Postnummer || ''}`.trim();
+          const coords = row.latitude && row.longitude ? 
+            { lat: parseFloat(row.latitude), lng: parseFloat(row.longitude) } : 
+            await geocodeAddress(address);
+          if (coords) {
+            nafStations.push({ address, lat: coords.lat, lng: coords.lng, type: 'naf' });
+          }
+        }
+
+        return { vikingStations, nafStations };
+      } catch (error) {
+        console.error('Error loading Excel file:', error);
+        document.getElementById('errorMessage').textContent = 'Error loading Møller Innkjøp stasjoner.xlsx. Check file path.';
+        document.getElementById('errorMessage').style.display = 'block';
+        return { vikingStations: [], nafStations: [] };
+      }
+    }
+
+    async function toggleLayer(type) {
+      Object.keys(layers).forEach(key => {
+        layers[key].clearLayers();
+        document.querySelectorAll('.nav-bar a').forEach(a => a.classList.remove('active'));
+      });
+      document.querySelector(`.nav-bar a[onclick="toggleLayer('${type}')"]`).classList.add('active');
+
+      const { vikingStations, nafStations } = await loadExcelData();
+      allMarkers = [];
+
+      if (type === 'all') {
+        const uniqueCoords = new Set();
+        [...vikingStations, ...nafStations].forEach(station => {
+          uniqueCoords.add(`${station.lat.toFixed(6)},${station.lng.toFixed(6)}`);
+        });
+
+        uniqueCoords.forEach(coordKey => {
+          const [lat, lng] = coordKey.split(',').map(parseFloat);
+          const matchingStations = [...vikingStations, ...nafStations].filter(
+            station => `${station.lat.toFixed(6)},${station.lng.toFixed(6)}` === coordKey
+          );
+          const markerColor = matchingStations.some(s => s.type === 'viking') ? markerColors['viking'] : markerColors['naf'];
+          const displayValue = matchingStations.length > 1 ? matchingStations.length : '';
+          let popupContent = '<ul>';
+          matchingStations.forEach(station => {
+            popupContent += `<li>${station.type.toUpperCase()} Station<br>Adresse: ${station.address}</li>`;
+            allMarkers.push({ lat, lng, address: station.address });
+          });
+          popupContent += '</ul>';
+          layers['all'].addLayer(L.marker([lat, lng], {
+            title: `${matchingStations.length} station${matchingStations.length > 1 ? 's' : ''}`,
+            icon: L.divIcon({
+              className: 'custom-marker',
+              html: `<div style="background-color: ${markerColor};">${displayValue}</div>`,
+              iconSize: [40, 40],
+              iconAnchor: [20, 40]
+            })
+          }).bindPopup(popupContent));
+        });
+      } else {
+        const stations = type === 'viking' ? vikingStations : nafStations;
+        const groupedStations = [];
+        const processed = new Set();
+        const XX_PIXELS = 50;
+
+        stations.forEach((station, i) => {
+          if (processed.has(i)) return;
+          processed.add(i);
+          const group = [station];
+          const pointA = map.latLngToContainerPoint([station.lat, station.lng]);
+
+          stations.forEach((otherStation, j) => {
+            if (i === j || processed.has(j)) return;
+            const pointB = map.latLngToContainerPoint([otherStation.lat, otherStation.lng]);
+            const distance = Math.sqrt(
+              Math.pow(pointA.x - pointB.x, 2) + Math.pow(pointA.y - pointB.y, 2)
+            );
+            if (distance <= XX_PIXELS) {
+              group.push(otherStation);
+              processed.add(j);
+            }
+          });
+          groupedStations.push(group);
+        });
+
+        groupedStations.forEach(group => {
+          if (group.length === 0) return;
+          const avgLat = group.reduce((sum, s) => sum + s.lat, 0) / group.length;
+          const avgLng = group.reduce((sum, s) => sum + s.lng, 0) / group.length;
+          const markerColor = markerColors[type];
+          const displayValue = group.length > 1 ? group.length : '';
+          let popupContent = '<ul>';
+          group.forEach(station => {
+            popupContent += `<li>${station.type.toUpperCase()} Station<br>Adresse: ${station.address}</li>`;
+            allMarkers.push({ lat: avgLat, lng: avgLng, address: station.address });
+          });
+          popupContent += '</ul>';
+
+          layers[type].addLayer(L.marker([avgLat, avgLng], {
+            title: `${group.length} station${group.length > 1 ? 's' : ''}`,
+            icon: L.divIcon({
+              className: 'custom-marker',
+              html: `<div style="background-color: ${markerColor};">${displayValue}</div>`,
+              iconSize: [40, 40],
+              iconAnchor: [20, 40]
+            })
+          }).bindPopup(popupContent));
+        });
+      }
+
+      map.eachLayer(layer => { if (layer instanceof L.LayerGroup) map.removeLayer(layer); });
+      map.addLayer(layers[type]);
+
+      const allCoords = allMarkers.map(m => [m.lat, m.lng]);
+      if (allCoords.length > 0) {
+        const bounds = L.latLngBounds(allCoords);
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+      } else {
+        map.setView([64.0, 10.0], 5);
+      }
+      map.invalidateSize();
+    }
+
+    function searchAddress() {
+      const searchValue = document.getElementById('searchInput').value.toLowerCase();
+      map.eachLayer(layer => {
+        if (layer instanceof L.MarkerClusterGroup) {
+          layer.eachLayer(marker => {
+            const markerData = allMarkers.find(m =>
+              m.lat === marker.getLatLng().lat && m.lng === marker.getLatLng().lng
+            );
+            if (markerData && markerData.address.toLowerCase().includes(searchValue)) {
+              marker.openPopup();
+              map.setView(marker.getLatLng(), 15);
+            }
+          });
+        }
+      });
+    }
+
+    map.on('zoomend', () => {
+      const activeLayer = document.querySelector('.nav-bar a.active').getAttribute('onclick').match(/'([^']+)'/)[1];
+      if (activeLayer !== 'all') {
+        toggleLayer(activeLayer);
+      }
+    });
+
+    toggleLayer('all');
+  </script>
+</body>
+</html>
