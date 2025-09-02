@@ -164,25 +164,13 @@
           const lng = parseFloat(row.Longitude); // Column F
           console.log(`Viking ${row.Stasjon}: Latitude ${lat}, Longitude ${lng}`);
           if (!isNaN(lat) && !isNaN(lng)) {
-            // Check for Indian Sea (e.g., lat near 0, lng near 60-100) and swap if needed
-            if (lat > -10 && lat < 10 && lng > 50 && lng < 100) {
-              console.warn(`Swapping coordinates for ${row.Stasjon}: Original Latitude ${lat}, Longitude ${lng}`);
-              vikingStations.push({
-                ...row,
-                address: `${row.Adresse}, ${row.Poststed}, ${row.Postnummer}`,
-                lat: lng,
-                lng: lat,
-                type: 'viking'
-              });
-            } else {
-              vikingStations.push({
-                ...row,
-                address: `${row.Adresse}, ${row.Poststed}, ${row.Postnummer}`,
-                lat,
-                lng,
-                type: 'viking'
-              });
-            }
+            vikingStations.push({
+              ...row,
+              address: `${row.Adresse}, ${row.Poststed}, ${row.Postnummer}`,
+              lat,
+              lng,
+              type: 'viking'
+            });
           } else {
             console.warn(`Invalid coordinates for ${row.Stasjon}: Latitude ${lat}, Longitude ${lng}`);
           }
@@ -198,25 +186,13 @@
           const lng = parseFloat(row.Longitude); // Column F
           console.log(`NAF ${row.Stasjon}: Latitude ${lat}, Longitude ${lng}`);
           if (!isNaN(lat) && !isNaN(lng)) {
-            // Check for Indian Sea (e.g., lat near 0, lng near 60-100) and swap if needed
-            if (lat > -10 && lat < 10 && lng > 50 && lng < 100) {
-              console.warn(`Swapping coordinates for ${row.Stasjon}: Original Latitude ${lat}, Longitude ${lng}`);
-              nafStations.push({
-                ...row,
-                address: `${row.Adresse}, ${row.Poststed}, ${row.Postnummer}`,
-                lat: lng,
-                lng: lat,
-                type: 'naf'
-              });
-            } else {
-              nafStations.push({
-                ...row,
-                address: `${row.Adresse}, ${row.Poststed}, ${row.Postnummer}`,
-                lat,
-                lng,
-                type: 'naf'
-              });
-            }
+            nafStations.push({
+              ...row,
+              address: `${row.Adresse}, ${row.Poststed}, ${row.Postnummer}`,
+              lat,
+              lng,
+              type: 'naf'
+            });
           } else {
             console.warn(`Invalid coordinates for ${row.Stasjon}: Latitude ${lat}, Longitude ${lng}`);
           }
