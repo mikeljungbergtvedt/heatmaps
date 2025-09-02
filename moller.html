@@ -166,7 +166,7 @@
           if (!isNaN(lat) && !isNaN(lng)) {
             vikingStations.push({
               ...row,
-              address: `${row.Adresse}, ${row.Poststed}, ${row.Postnummer}`,
+              address: [row.Adresse, row.Poststed, row.Postnummer].filter(Boolean).join(', '),
               lat,
               lng,
               type: 'viking'
@@ -188,7 +188,7 @@
           if (!isNaN(lat) && !isNaN(lng)) {
             nafStations.push({
               ...row,
-              address: `${row.Adresse}, ${row.Poststed}, ${row.Postnummer}`,
+              address: [row.Adresse, row.Poststed, row.Postnummer].filter(Boolean).join(', '),
               lat,
               lng,
               type: 'naf'
@@ -227,7 +227,7 @@
         stations.forEach(station => {
           console.log(`Adding marker for ${station.Stasjon} at ${station.lat}, ${station.lng}`);
           const icon = station.type === 'viking' ? redFlagIcon : yellowFlagIcon;
-          let popupContent = `<ul><li><b>${station.type.toUpperCase()} Station</b><br>`;
+          let popupContent = `<ul><li><b>${station.type.toUpperCase()}</b><br>`;
           Object.entries(station).forEach(([key, value]) => {
             if (key !== 'lat' && key !== 'lng' && key !== 'type' && key !== 'address' && value) {
               popupContent += `${key}: ${value}<br>`;
@@ -249,7 +249,7 @@
         const icon = type === 'viking' ? redFlagIcon : yellowFlagIcon;
         stations.forEach(station => {
           console.log(`Adding marker for ${station.Stasjon} at ${station.lat}, ${station.lng}`);
-          let popupContent = `<ul><li><b>${station.type.toUpperCase()} Station</b><br>`;
+          let popupContent = `<ul><li><b>${station.type.toUpperCase()}</b><br>`;
           Object.entries(station).forEach(([key, value]) => {
             if (key !== 'lat' && key !== 'lng' && key !== 'type' && key !== 'address' && value) {
               popupContent += `${key}: ${value}<br>`;
