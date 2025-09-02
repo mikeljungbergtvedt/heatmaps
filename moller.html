@@ -154,6 +154,7 @@
         const nafStations = [];
         const seenStations = new Set();
 
+        console.log('Viking Data:', vikingData);
         for (const row of vikingData) {
           const stationKey = `${row.Stasjon}|${row.Adresse}|${row.Postnummer}`;
           if (seenStations.has(stationKey)) continue;
@@ -161,7 +162,8 @@
 
           const lat = parseFloat(row.Latitude); // Column E
           const lng = parseFloat(row.Longitude); // Column F
-          if (!isNaN(lat) && !isNaN(lng) && lat >= 58 && lat <= 71 && lng >= 5 && lng <= 31) {
+          console.log(`Viking ${row.Stasjon}: Latitude ${lat}, Longitude ${lng}`);
+          if (!isNaN(lat) && !isNaN(lng)) {
             vikingStations.push({
               ...row,
               address: `${row.Adresse}, ${row.Poststed}, ${row.Postnummer}`,
@@ -174,6 +176,7 @@
           }
         }
 
+        console.log('NAF Data:', nafData);
         for (const row of nafData) {
           const stationKey = `${row.Stasjon}|${row.Adresse}|${row.Postnummer}`;
           if (seenStations.has(stationKey)) continue;
@@ -181,7 +184,8 @@
 
           const lat = parseFloat(row.Latitude); // Column E
           const lng = parseFloat(row.Longitude); // Column F
-          if (!isNaN(lat) && !isNaN(lng) && lat >= 58 && lat <= 71 && lng >= 5 && lng <= 31) {
+          console.log(`NAF ${row.Stasjon}: Latitude ${lat}, Longitude ${lng}`);
+          if (!isNaN(lat) && !isNaN(lng)) {
             nafStations.push({
               ...row,
               address: `${row.Adresse}, ${row.Poststed}, ${row.Postnummer}`,
@@ -194,6 +198,8 @@
           }
         }
 
+        console.log('Viking Stations:', vikingStations);
+        console.log('NAF Stations:', nafStations);
         return { vikingStations, nafStations };
       } catch (error) {
         console.error('Error loading Excel file:', error);
@@ -215,7 +221,11 @@
 
       if (type === 'all') {
         const stations = [...vikingStations, ...nafStations];
+        if (stations.length === 0) {
+          console.warn('No stations to display');
+        }
         stations.forEach(station => {
+          console.log(`Adding marker for ${station.Stasjon} at ${station.lat}, ${station.lng}`);
           const icon = station.type === 'viking' ? redFlagIcon : yellowFlagIcon;
           let popupContent = `<ul><li><b>${station.type.toUpperCase()} Station</b><br>`;
           Object.entries(station).forEach(([key, value]) => {
@@ -233,8 +243,12 @@
         });
       } else {
         const stations = type === 'viking' ? vikingStations : nafStations;
+        if (stations.length === 0) {
+          console.warn(`No ${type} stations to display`);
+        }
         const icon = type === 'viking' ? redFlagIcon : yellowFlagIcon;
         stations.forEach(station => {
+          console.log(`Adding marker for ${station.Stasjon} at ${station.lat}, ${station.lng}`);
           let popupContent = `<ul><li><b>${station.type.toUpperCase()} Station</b><br>`;
           Object.entries(station).forEach(([key, value]) => {
             if (key !== 'lat' && key !== 'lng' && key !== 'type' && key !== 'address' && value) {
@@ -259,6 +273,7 @@
         const bounds = L.latLngBounds(allCoords);
         map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
       } else {
+        console.warn('No coordinates to fit bounds, setting default view');
         map.setView([64.0, 10.0], 5);
       }
       map.invalidateSize();
