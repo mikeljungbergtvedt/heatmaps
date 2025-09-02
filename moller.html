@@ -195,7 +195,9 @@
           const marker = L.marker([station.lat, station.lng], {
             title: station.Stasjon,
             icon: icon
-          }).bindPopup(popupContent);
+          }).bindPopup(popupContent, { autoClose: false });
+          marker.on('mouseover', function() { this.openPopup(); });
+          marker.on('mouseout', function() { this.closePopup(); });
           layers['all'].addLayer(marker);
           allMarkers.push({ lat: station.lat, lng: station.lng, address: station.address });
         });
@@ -217,7 +219,9 @@
           const marker = L.marker([station.lat, station.lng], {
             title: station.Stasjon,
             icon: icon
-          }).bindPopup(popupContent);
+          }).bindPopup(popupContent, { autoClose: false });
+          marker.on('mouseover', function() { this.openPopup(); });
+          marker.on('mouseout', function() { this.closePopup(); });
           layers[type].addLayer(marker);
           allMarkers.push({ lat: station.lat, lng: station.lng, address: station.address });
         });
@@ -227,7 +231,7 @@
       const allCoords = allMarkers.map(m => [m.lat, m.lng]);
       if (allCoords.length > 0) {
         const bounds = L.latLngBounds(allCoords);
-        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
       } else {
         console.warn('No coordinates to fit bounds, setting default view');
         map.setView([64.0, 10.0], 5);
@@ -250,10 +254,6 @@
         }
       });
     }
-    map.on('zoomend', () => {
-      const activeLayer = document.querySelector('.nav-bar a.active').getAttribute('onclick').match(/'([^']+)'/)[1];
-      toggleLayer(activeLayer);
-    });
     toggleLayer('all');
   </script>
 </body>
