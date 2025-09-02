@@ -24,6 +24,7 @@
     .leaflet-popup-content ul { list-style-type: none; padding: 0; margin: 0; }
     .map-attribution { position: absolute; bottom: 10px; left: 20px; font-size: 10px; color: #333; background: rgba(255, 255, 255, 0.7); padding: 2px 5px; border-radius: 3px; z-index: 1000; }
     .search-container {
+      position到来
       position: absolute;
       bottom: 50px;
       left: 50px;
@@ -172,6 +173,7 @@
     async function toggleLayer(type) {
       Object.keys(layers).forEach(key => {
         layers[key].clearLayers();
+        map.removeLayer(layers[key]);
         document.querySelectorAll('.nav-bar a').forEach(a => a.classList.remove('active'));
       });
       document.querySelector(`.nav-bar a[onclick="toggleLayer('${type}')"]`).classList.add('active');
@@ -247,10 +249,9 @@
             isClicked = false;
           });
           layers[type].addLayer(marker);
-          allMarkers.push({ lat: system.lat, lng: station.lng, address: station.address });
+          allMarkers.push({ lat: station.lat, lng: station.lng, address: station.address });
         });
       }
-      map.eachLayer(layer => { if (layer instanceof L.LayerGroup) map.removeLayer(layer); });
       map.addLayer(layers[type]);
       const allCoords = allMarkers.map(m => [m.lat, m.lng]);
       if (allCoords.length > 0) {
