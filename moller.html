@@ -22,7 +22,6 @@
     .nav-bar a.naf { background: #fbc02d; }
     .map-container { max-width: 1200px; margin: 20px auto; padding: 20px; background: rgba(255, 255, 255, 0.8); border-radius: 8px; height: 80vh; position: relative; }
     #map { width: 100%; height: 100%; }
-    .custom-marker div { width: 20px; height: 20px; line-height: 20px; font-size: 10px; font-weight: bold; color: #fff; text-align: center; border: 2px solid #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.3); clip-path: polygon(0% 0%, 100% 0%, 100% 60%, 50% 100%, 0% 60%); }
     .error-message { text-align: center; color: red; padding: 10px; display: none; }
     .leaflet-popup-content ul { list-style-type: none; padding: 0; margin: 0; }
     .map-attribution { position: absolute; bottom: 10px; left: 20px; font-size: 10px; color: #333; background: rgba(255, 255, 255, 0.7); padding: 2px 5px; border-radius: 3px; z-index: 1000; }
@@ -56,7 +55,6 @@
       .nav-bar a { display: block; margin: 5px auto; width: 80%; }
       h1 { font-size: 1.3em; }
       .map-container { margin: 10px; padding: 10px; height: 70vh; }
-      .custom-marker div { width: 18px; height: 18px; line-height: 18px; font-size: 8px; }
       .map-attribution { font-size: 8px; }
       .search-container { bottom: 40px; left: 30px; padding: 3px 6px; }
       .search-container input { font-size: 12px; width: 140px; }
@@ -92,10 +90,19 @@
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
     }).addTo(map);
 
-    const markerColors = {
-      'viking': '#d32f2f', // Red for Viking
-      'naf': '#fbc02d' // Yellow for NAF
-    };
+    const redFlagIcon = L.icon({
+      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+      iconSize: [20, 20],
+      iconAnchor: [10, 20],
+      popupAnchor: [0, -20]
+    });
+
+    const yellowFlagIcon = L.icon({
+      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png',
+      iconSize: [20, 20],
+      iconAnchor: [10, 20],
+      popupAnchor: [0, -20]
+    });
 
     const layers = {
       'all': L.markerClusterGroup({ maxClusterRadius: 35 }),
@@ -103,13 +110,11 @@
         maxClusterRadius: 25,
         iconCreateFunction: function(cluster) {
           const markers = cluster.getAllChildMarkers();
-          const markerColor = markerColors['viking'];
           const displayValue = markers.length > 1 ? markers.length : '';
           return L.divIcon({
-            html: `<div style="background-color: ${markerColor};">${displayValue}</div>`,
-            className: 'custom-marker',
-            iconSize: [20, 20],
-            iconAnchor: [10, 20]
+            html: `<div style="background-color: #d32f2f; width: 20px; height: 20px; line-height: 20px; border-radius: 50%; font-size: 10px; font-weight: bold; color: #fff; text-align: center; border: 2px solid #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.3);">${displayValue}</div>`,
+            className: '',
+            iconSize: [20, 20]
           });
         }
       }),
@@ -117,13 +122,11 @@
         maxClusterRadius: 25,
         iconCreateFunction: function(cluster) {
           const markers = cluster.getAllChildMarkers();
-          const markerColor = markerColors['naf'];
           const displayValue = markers.length > 1 ? markers.length : '';
           return L.divIcon({
-            html: `<div style="background-color: ${markerColor};">${displayValue}</div>`,
-            className: 'custom-marker',
-            iconSize: [20, 20],
-            iconAnchor: [10, 20]
+            html: `<div style="background-color: #fbc02d; width: 20px; height: 20px; line-height: 20px; border-radius: 50%; font-size: 10px; font-weight: bold; color: #fff; text-align: center; border: 2px solid #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.3);">${displayValue}</div>`,
+            className: '',
+            iconSize: [20, 20]
           });
         }
       })
@@ -133,7 +136,7 @@
 
     async function geocodeAddress(address) {
       try {
-        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&countrycodes=no`;
+        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&countrycodes=no&addressdetails=1`;
         const response = await fetch(url, { headers: { 'User-Agent': 'MøllerInnkjøp/1.0' } });
         const data = await response.json();
         if (data.length > 0) {
@@ -168,21 +171,21 @@
 
         for (const row of vikingData) {
           const address = `${row.Adresse || row.Address || ''}, ${row.By || row.City || ''}, ${row.Postnummer || row['Postal Code'] || ''}`.trim();
-          const coords = row.latitude && row.longitude ? 
+          const coords = row.latitude && row.longitude && !isNaN(parseFloat(row.latitude)) && !isNaN(parseFloat(row.longitude)) ? 
             { lat: parseFloat(row.latitude), lng: parseFloat(row.longitude) } : 
             await geocodeAddress(address);
           if (coords) {
-            vikingStations.push({ address, lat: coords.lat, lng: coords.lng, type: 'viking' });
+            vikingStations.push({ ...row, address, lat: coords.lat, lng: coords.lng, type: 'viking' });
           }
         }
 
         for (const row of nafData) {
           const address = `${row.Adresse || row.Address || ''}, ${row.By || row.City || ''}, ${row.Postnummer || row['Postal Code'] || ''}`.trim();
-          const coords = row.latitude && row.longitude ? 
+          const coords = row.latitude && row.longitude && !isNaN(parseFloat(row.latitude)) && !isNaN(parseFloat(row.longitude)) ? 
             { lat: parseFloat(row.latitude), lng: parseFloat(row.longitude) } : 
             await geocodeAddress(address);
           if (coords) {
-            nafStations.push({ address, lat: coords.lat, lng: coords.lng, type: 'naf' });
+            nafStations.push({ ...row, address, lat: coords.lat, lng: coords.lng, type: 'naf' });
           }
         }
 
@@ -216,22 +219,22 @@
           const matchingStations = [...vikingStations, ...nafStations].filter(
             station => `${station.lat.toFixed(6)},${station.lng.toFixed(6)}` === coordKey
           );
-          const markerColor = matchingStations.some(s => s.type === 'viking') ? markerColors['viking'] : markerColors['naf'];
-          const displayValue = matchingStations.length > 1 ? matchingStations.length : '';
+          const icon = matchingStations.some(s => s.type === 'viking') ? redFlagIcon : yellowFlagIcon;
           let popupContent = '<ul>';
           matchingStations.forEach(station => {
-            popupContent += `<li>${station.type.toUpperCase()} Station<br>Adresse: ${station.address}</li>`;
+            popupContent += `<li><b>${station.type.toUpperCase()} Station</b><br>`;
+            Object.entries(station).forEach(([key, value]) => {
+              if (key !== 'lat' && key !== 'lng' && key !== 'type' && value) {
+                popupContent += `${key}: ${value}<br>`;
+              }
+            });
+            popupContent += '</li>';
             allMarkers.push({ lat, lng, address: station.address });
           });
           popupContent += '</ul>';
           layers['all'].addLayer(L.marker([lat, lng], {
             title: `${matchingStations.length} station${matchingStations.length > 1 ? 's' : ''}`,
-            icon: L.divIcon({
-              className: 'custom-marker',
-              html: `<div style="background-color: ${markerColor};">${displayValue}</div>`,
-              iconSize: [20, 20],
-              iconAnchor: [10, 20]
-            })
+            icon: icon
           }).bindPopup(popupContent));
         });
       } else {
@@ -264,23 +267,23 @@
           if (group.length === 0) return;
           const avgLat = group.reduce((sum, s) => sum + s.lat, 0) / group.length;
           const avgLng = group.reduce((sum, s) => sum + s.lng, 0) / group.length;
-          const markerColor = markerColors[type];
-          const displayValue = group.length > 1 ? group.length : '';
+          const icon = type === 'viking' ? redFlagIcon : yellowFlagIcon;
           let popupContent = '<ul>';
           group.forEach(station => {
-            popupContent += `<li>${station.type.toUpperCase()} Station<br>Adresse: ${station.address}</li>`;
+            popupContent += `<li><b>${station.type.toUpperCase()} Station</b><br>`;
+            Object.entries(station).forEach(([key, value]) => {
+              if (key !== 'lat' && key !== 'lng' && key !== 'type' && value) {
+                popupContent += `${key}: ${value}<br>`;
+              }
+            });
+            popupContent += '</li>';
             allMarkers.push({ lat: avgLat, lng: avgLng, address: station.address });
           });
           popupContent += '</ul>';
 
           layers[type].addLayer(L.marker([avgLat, avgLng], {
             title: `${group.length} station${group.length > 1 ? 's' : ''}`,
-            icon: L.divIcon({
-              className: 'custom-marker',
-              html: `<div style="background-color: ${markerColor};">${displayValue}</div>`,
-              iconSize: [20, 20],
-              iconAnchor: [10, 20]
-            })
+            icon: icon
           }).bindPopup(popupContent));
         });
       }
