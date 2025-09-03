@@ -105,11 +105,14 @@
     let allMarkers = [];
     async function loadExcelData() {
       try {
-        // Updated to new SharePoint download URL
+        console.log('Attempting to fetch Excel file from SharePoint...');
         const response = await fetch('https://autoringen-my.sharepoint.com/:x:/g/personal/mike_autoringen_no/Ef0XvVtLtktJjeqXVpE-73gBbxPgbxpTtmoDhXZX0DQYnw?download=1');
-        if (!response.ok) throw new Error('Failed to load Excel file from SharePoint');
+        console.log('Fetch response status:', response.status, response.statusText);
+        if (!response.ok) throw new Error(`Failed to load Excel file from SharePoint: ${response.status} ${response.statusText}`);
         const arrayBuffer = await response.arrayBuffer();
+        console.log('ArrayBuffer size:', arrayBuffer.byteLength, 'bytes');
         const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        console.log('Workbook sheets:', Object.keys(workbook.Sheets));
         const vikingSheet = workbook.Sheets['Viking'];
         const NAFSheet = workbook.Sheets['NAF'];
         if (!vikingSheet || !NAFSheet) {
@@ -165,7 +168,7 @@
         return { vikingStations, NAFStations };
       } catch (error) {
         console.error('Error loading Excel file from SharePoint:', error);
-        document.getElementById('errorMessage').textContent = 'Error loading data from SharePoint. Check sharing settings or URL.';
+        document.getElementById('errorMessage').textContent = `Error loading data from SharePoint: ${error.message}. Check sharing settings or Excel file structure.`;
         document.getElementById('errorMessage').style.display = 'block';
         return { vikingStations: [], NAFStations: [] };
       }
