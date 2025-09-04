@@ -161,26 +161,6 @@
       border-radius: 5px;
       display: none;
     }
-    .legend {
-      position: absolute;
-      bottom: 80px;
-      right: 20px;
-      background: rgba(255, 255, 255, 0.9);
-      padding: 10px;
-      border-radius: 5px;
-      z-index: 1000;
-    }
-    .legend h4 {
-      margin: 0 0 5px;
-      font-size: 14px;
-    }
-    .legend span {
-      display: inline-block;
-      width: 20px;
-      height: 20px;
-      margin-right: 5px;
-      vertical-align: middle;
-    }
     @media (max-width: 600px) {
       .nav-bar button {
         display: block;
@@ -213,14 +193,6 @@
         font-size: 12px;
         width: 140px;
       }
-      .legend {
-        bottom: 70px;
-        right: 10px;
-        padding: 5px;
-      }
-      .legend h4 {
-        font-size: 12px;
-      }
     }
   </style>
 </head>
@@ -243,11 +215,6 @@
     <div class="search-container">
       <label for="searchInput" class="visually-hidden">Søk postnummer</label>
       <input type="text" id="searchInput" placeholder="Søk postnummer" onkeyup="searchPostcode()">
-    </div>
-    <div class="legend" id="legend">
-      <h4>Price Legend</h4>
-      <div><span id="minPriceColor"></span><span id="minPriceLabel">Loading...</span></div>
-      <div><span id="maxPriceColor"></span><span id="maxPriceLabel">Loading...</span></div>
     </div>
     <div class="loading" id="loading">Loading...</div>
   </div>
@@ -397,10 +364,6 @@
             .filter(price => !isNaN(price));
           minPrice = prices.length > 0 ? Math.min(...prices) : 580;
           maxPrice = prices.length > 0 ? Math.max(...prices) : 1090;
-          document.getElementById('minPriceColor').style.backgroundColor = getHeatmapColor(minPrice);
-          document.getElementById('minPriceLabel').textContent = `${minPrice} NOK`;
-          document.getElementById('maxPriceColor').style.backgroundColor = getHeatmapColor(maxPrice);
-          document.getElementById('maxPriceLabel').textContent = `${maxPrice} NOK`;
           processData(cachedData, sted);
         },
         error: function(error) {
