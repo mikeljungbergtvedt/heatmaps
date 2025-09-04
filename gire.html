@@ -1,165 +1,519 @@
 <!DOCTYPE html>
 <html lang="nb-NO">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Forslag til Gire Soner</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
-    <style>
-        body { font-family: 'Roboto', sans-serif; margin: 0; padding: 0; background: #f4f4f4; color: #333; font-size: 16px; }
-        header { background: #003087; color: #fff; padding: 15px; text-align: center; }
-        header img.logo { max-width: 120px; height: auto; }
-        h1 { margin: 5px 0; font-size: 1.5em; font-weight: 400; color: #e0e0e0; text-transform: uppercase; letter-spacing: 1px; }
-        .nav-bar { max-width: 1200px; margin: 10px auto; text-align: center; }
-        .nav-bar a { display: inline-block; color: #fff; text-decoration: none; padding: 10px 20px; margin: 5px; border-radius: 5px; font-weight: 700; transition: background-color 0.3s, transform 0.2s; }
-        .nav-bar a:hover { transform: scale(1.05); }
-        .nav-bar a.active { filter: brightness(1.2); }
-        .nav-bar a.all { background: #666; }
-        .nav-bar a.skedsmo { background: #1d4877; }
-        .nav-bar a.bergen { background: #1b8a5a; }
-        .nav-bar a.stavanger { background: #fbb021; }
-        .nav-bar a.trondheim { background: #f68838; }
-        .nav-bar a.ski { background: #ee3e32; }
-        .map-container { max-width: 1200px; margin: 20px auto; padding: 20px; background: rgba(255, 255, 255, 0.8); border-radius: 8px; height: 80vh; position: relative; }
-        #map { width: 100%; height: 100%; }
-        .custom-marker { position: relative; }
-        .custom-marker div { width: 40px; height: 40px; line-height: 40px; border-radius: 50%; font-size: 14px; font-weight: bold; color: #fff; text-align: center; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.3); background: inherit; }
-        .error-message { text-align: center; color: red; padding: 10px; display: none; }
-        .leaflet-popup-content ul { list-style-type: none; padding: 0; margin: 0; }
-        .map-attribution { position: absolute; bottom: 10px; left: 20px; font-size: 10px; color: #333; background: rgba(255, 255, 255, 0.7); padding: 2px 5px; border-radius: 3px; z-index: 1000; }
-        .search-container {
-            position: absolute;
-            bottom: 50px; /* 50px from bottom */
-            left: 50px; /* 50px from left border */
-            z-index: 1000;
-            background: rgba(255, 255, 255, 0.95); /* Light background */
-            padding: 4px 8px; /* Reduced frame */
-            border-radius: 10px; /* Smooth, Apple-like curve */
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); /* Glossy shadow */
-            backdrop-filter: blur(5px); /* Liquid effect */
-            display: flex;
-            align-items: center;
-        }
-        .search-container input {
-            padding: 5px;
-            font-size: 14px;
-            border: none; /* Remove default border */
-            background: transparent; /* Match liquid background */
-            width: 180px;
-            outline: none;
-            color: #333;
-            transition: color 0.3s;
-        }
-        .search-container input:focus {
-            color: #003087; /* Apple-like focus color */
-        }
-        @media (max-width: 600px) {
-            .nav-bar a { display: block; margin: 5px auto; width: 80%; }
-            h1 { font-size: 1.3em; }
-            .map-container { margin: 10px; padding: 10px; height: 70vh; }
-            .custom-marker div { width: 38px; height: 38px; line-height: 38px; font-size: 12px; }
-            .map-attribution { font-size: 8px; }
-            .search-container { bottom: 40px; left: 30px; padding: 3px 6px; }
-            .search-container input { font-size: 12px; width: 140px; }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Forslag til Gire Soner</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f4f4f4;
+      color: #333;
+      font-size: 16px;
+    }
+    header {
+      background: #003087;
+      color: #fff;
+      padding: 15px;
+      text-align: center;
+    }
+    header img.logo {
+      max-width: 120px;
+      height: auto;
+    }
+    h1 {
+      margin: 5px 0;
+      font-size: 1.5em;
+      font-weight: 400;
+      color: #e0e0e0;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .nav-bar {
+      max-width: 1200px;
+      margin: 10px auto;
+      text-align: center;
+    }
+    .nav-bar a {
+      display: inline-block;
+      color: #fff;
+      text-decoration: none;
+      padding: 10px 20px;
+      margin: 5px;
+      border-radius: 5px;
+      font-weight: 700;
+      transition: background-color 0.3s, transform 0.2s;
+    }
+    .nav-bar a:hover {
+      transform: scale(1.05);
+    }
+    .nav-bar a.active {
+      filter: brightness(1.2);
+    }
+    .nav-bar a.all { background: #666; }
+    .nav-bar a.skedsmo { background: #1d4877; }
+    .nav-bar a.bergen { background: #1b8a5a; }
+    .nav-bar a.stavanger { background: #fbb021; }
+    .nav-bar a.trondheim { background: #f68838; }
+    .nav-bar a.ski { background: #ee3e32; }
+    .map-container {
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.8);
+      border-radius: 8px;
+      height: 80vh;
+      position: relative;
+    }
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+    .custom-marker {
+      position: relative;
+    }
+    .custom-marker div {
+      width: 40px;
+      height: 40px;
+      line-height: 40px;
+      border-radius: 50%;
+      font-size: 14px;
+      font-weight: bold;
+      color: #fff;
+      text-align: center;
+      border: 2px solid #fff;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      background: inherit;
+    }
+    .error-message {
+      text-align: center;
+      color: red;
+      padding: 10px;
+      display: none;
+    }
+    .leaflet-popup-content ul {
+      list-style-type: none;
+      padding: 0;
+      margin: 0;
+    }
+    .map-attribution {
+      position: absolute;
+      bottom: 10px;
+      left: 20px;
+      font-size: 10px;
+      color: #333;
+      background: rgba(255, 255, 255, 0.7);
+      padding: 2px 5px;
+      border-radius: 3px;
+      z-index: 1000;
+    }
+    .search-container {
+      position: absolute;
+      bottom: 50px;
+      left: 50px;
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 4px 8px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      backdrop-filter: blur(5px);
+      display: flex;
+      align-items: center;
+    }
+    .search-container input {
+      padding: 5px;
+      font-size: 14px;
+      border: none;
+      background: transparent;
+      width: 180px;
+      outline: none;
+      color: #333;
+      transition: color 0.3s;
+    }
+    .search-container input:focus {
+      color: #003087;
+    }
+    @media (max-width: 600px) {
+      .nav-bar a {
+        display: block;
+        margin: 5px auto;
+        width: 80%;
+      }
+      h1 {
+        font-size: 1.3em;
+      }
+      .map-container {
+        margin: 10px;
+        padding: 10px;
+        height: 70vh;
+      }
+      .custom-marker div {
+        width: 38px;
+        height: 38px;
+        line-height: 38px;
+        font-size: 12px;
+      }
+      .map-attribution {
+        font-size: 8px;
+      }
+      .search-container {
+        bottom: 40px;
+        left: 30px;
+        padding: 3px 6px;
+      }
+      .search-container input {
+        font-size: 12px;
+        width: 140px;
+      }
+    }
+  </style>
 </head>
 <body>
-    <header><img src="logo.png" alt="Autoringen Logo" class="logo"><h1>Forslag til Gire Soner</h1></header>
-    <div class="nav-bar">
-        <a href="javascript:void(0)" onclick="toggleLayer('all')" class="all active">Alle</a>
-        <a href="javascript:void(0)" onclick="toggleLayer('Skedsmo')" class="skedsmo">Skedsmo</a>
-        <a href="javascript:void(0)" onclick="toggleLayer('Bergen')" class="bergen">Bergen</a>
-        <a href="javascript:void(0)" onclick="toggleLayer('Stavanger')" class="stavanger">Stavanger</a>
-        <a href="javascript:void(0)" onclick="toggleLayer('Trondheim')" class="trondheim">Trondheim</a>
-        <a href="javascript:void(0)" onclick="toggleLayer('Ski')" class="ski">Ski</a>
+  <header>
+    <img src="logo.png" alt="Autoringen Logo" class="logo">
+    <h1>Forslag til Gire Soner</h1>
+  </header>
+  <div class="nav-bar">
+    <a href="javascript:void(0)" onclick="toggleLayer('all')" class="all active">Alle</a>
+    <a href="javascript:void(0)" onclick="toggleLayer('Skedsmo')" class="skedsmo">Skedsmo</a>
+    <a href="javascript:void(0)" onclick="toggleLayer('Bergen')" class="bergen">Bergen</a>
+    <a href="javascript:void(0)" onclick="toggleLayer('Stavanger')" class="stavanger">Stavanger</a>
+    <a href="javascript:void(0)" onclick="toggleLayer('Trondheim')" class="trondheim">Trondheim</a>
+    <a href="javascript:void(0)" onclick="toggleLayer('Ski')" class="ski">Ski</a>
+  </div>
+  <div class="map-container">
+    <div id="map"></div>
+    <div class="map-attribution">Powered by OpenStreetMap | Autoringen | Postnummerdata frå Erik Bolstad</div>
+    <div class="search-container">
+      <input type="text" id="searchInput" placeholder="Søk postnummer" onkeyup="searchPostcode()">
     </div>
-    <div class="map-container">
-        <div id="map"></div>
-        <div class="map-attribution">Powered by OpenStreetMap | Autoringen | Postnummerdata frå Erik Bolstad</div>
-        <div class="search-container">
-            <input type="text" id="searchInput" placeholder="Søk poststed" onkeyup="searchSubRegion()">
-        </div>
-    </div>
-    <div class="error-message" id="errorMessage"></div>
-    <footer></footer>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
-    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-    <script>
-        const map = L.map('map', { minZoom: 5, maxZoom: 18 });
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
-        const layers = { 'all': L.markerClusterGroup({ maxClusterRadius: 35 }), 'Skedsmo': L.markerClusterGroup({ maxClusterRadius: 25 }), 'Bergen': L.markerClusterGroup({ maxClusterRadius: 25 }), 'Stavanger': L.markerClusterGroup({ maxClusterRadius: 25 }), 'Trondheim': L.markerClusterGroup({ maxClusterRadius: 25 }), 'Ski': L.markerClusterGroup({ maxClusterRadius: 25 }) };
-        const regionColors = { 'Bergen': '#1b8a5a', 'Trondheim': '#f68838', 'Stavanger': '#fbb021', 'Skedsmo': '#1d4877', 'Ski': '#ee3e32' };
-        const minPrice = 580; const maxPrice = 1090;
-        function getHeatmapColor(price) { const ratio = (price - minPrice) / (maxPrice - minPrice); return `hsl(${(1 - ratio) * 240}, 70%, 50%)`; }
+  </div>
+  <div class="error-message" id="errorMessage"></div>
+  <footer></footer>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script>
+    const map = L.map('map', { minZoom: 5, maxZoom: 18 });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
 
-        let allMarkers = []; // To store all markers for searching
+    const regionColors = {
+      'Bergen': '#1b8a5a',
+      'Trondheim': '#f68838',
+      'Stavanger': '#fbb021',
+      'Skedsmo': '#1d4877',
+      'Ski': '#ee3e32'
+    };
 
-        function toggleLayer(sted) {
-            Object.keys(layers).forEach(key => { layers[key].clearLayers(); document.querySelectorAll('.nav-bar a').forEach(a => a.classList.remove('active')); });
-            document.querySelector(`.nav-bar a[onclick="toggleLayer('${sted}')"]`).classList.add('active');
-            Papa.parse('./merged_postcodes_complete.csv', {
-                download: true, header: true, complete: function(results) {
-                    const data = results.data.filter(row => row.latitude && row.longitude && !isNaN(parseFloat(row.latitude)) && !isNaN(parseFloat(row.longitude)) && (sted === 'all' || row.Region === sted));
-                    allMarkers = []; // Reset markers array
-                    if (sted === 'all') {
-                        const uniqueCoords = new Set(); data.forEach(row => uniqueCoords.add(`${parseFloat(row.latitude).toFixed(6)},${parseFloat(row.longitude).toFixed(6)}`));
-                        uniqueCoords.forEach(coordKey => {
-                            const [lat, lng] = coordKey.split(',').map(parseFloat);
-                            const matchingRows = data.filter(row => `${parseFloat(row.latitude).toFixed(6)},${parseFloat(row.longitude).toFixed(6)}` === coordKey);
-                            const primaryRegion = matchingRows[0].Region; const isMissing = !matchingRows[0]['Sub Region'] || matchingRows[0]['Sub Region'] === '';
-                            let markerColor = regionColors[primaryRegion] || '#000000'; if (isMissing) markerColor = '#FF00FF';
-                            const displayValue = matchingRows.length > 1 ? matchingRows.length : '';
-                            let popupContent = matchingRows.length > 1 ? '<ul>' : '<ul>';
-                            matchingRows.forEach(row => { 
-                                popupContent += `<li>${row.Region}<br>Poststed: ${row['Sub Region'] || 'N/A'}<br>Postkode: ${row.Postnummer}<br>Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>Foreslått Autoringen Pris: ${row['Foreslått Autoringen Pris'] || 'N/A'}<br>Latitude: ${lat}<br>Longitude: ${lng}<br></li>`;
-                                allMarkers.push({ lat: lat, lng: lng, subRegion: row['Sub Region'] || 'N/A' });
-                            });
-                            popupContent += '</ul>';
-                            layers['all'].addLayer(L.marker([lat, lng], { title: `${matchingRows.length} zone${matchingRows.length > 1 ? 's' : ''}`, icon: L.divIcon({ className: 'custom-marker', html: `<div style="background-color: ${markerColor};">${displayValue}</div>`, iconSize: [40, 40], iconAnchor: [20, 40] }) }).bindPopup(popupContent));
-                        });
-                    } else {
-                        data.forEach(row => {
-                            const lat = parseFloat(row.latitude); const lng = parseFloat(row.longitude);
-                            const priceStr = row['Foreslått Autoringen Pris'] || '0';
-                            const price = parseInt(priceStr.replace(/[^0-9]/g, '')) || 0;
-                            let markerColor = getHeatmapColor(price); if (!row['Sub Region'] || row['Sub Region'] === '') markerColor = '#FF00FF';
-                            const displayValue = price < 1000 ? price.toString().padStart(3, '0') : price.toString().padStart(4, '0');
-                            let popupContent = '<ul>';
-                            popupContent += `<li>${row.Region}<br>Poststed: ${row['Sub Region'] || 'N/A'}<br>Postkode: ${row.Postnummer}<br>Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>Foreslått Autoringen Pris: ${row['Foreslått Autoringen Pris'] || 'N/A'}<br>Latitude: ${lat}<br>Longitude: ${lng}<br></li>`;
-                            popupContent += '</ul>';
-                            const marker = L.marker([lat, lng], { title: `Price: ${displayValue} NOK`, icon: L.divIcon({ className: 'custom-marker', html: `<div style="background-color: ${markerColor};">${displayValue}</div>`, iconSize: [40, 40], iconAnchor: [20, 40] }) }).bindPopup(popupContent);
-                            layers[sted].addLayer(marker);
-                            allMarkers.push({ lat: lat, lng: lng, subRegion: row['Sub Region'] || 'N/A' });
-                        });
-                    }
-                    map.eachLayer(layer => { if (layer instanceof L.LayerGroup) map.removeLayer(layer); });
-                    map.addLayer(layers[sted]);
-                    if (data.length > 0) { const bounds = L.latLngBounds([]); data.forEach(row => bounds.extend([parseFloat(row.latitude), parseFloat(row.longitude)])); if (bounds.isValid()) map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 }); else map.setView([64.0, 10.0], 5); } else map.setView([64.0, 10.0], 5);
-                    map.invalidateSize();
-                }, error: function(error) { console.error('Error loading CSV:', error); document.getElementById('errorMessage').textContent = 'Error loading merged_postcodes_complete.csv. Check file path.'; document.getElementById('errorMessage').style.display = 'block'; map.setView([64.0, 10.0], 5); }
-            });
+    const minPrice = 580;
+    const maxPrice = 1090;
+
+    function getHeatmapColor(price) {
+      const ratio = (price - minPrice) / (maxPrice - minPrice);
+      return `hsl(${(1 - ratio) * 240}, 70%, 50%)`;
+    }
+
+    const layers = {
+      'all': L.markerClusterGroup({ maxClusterRadius: 35 }),
+      'Skedsmo': L.markerClusterGroup({
+        maxClusterRadius: 25,
+        iconCreateFunction: function(cluster) {
+          const markers = cluster.getAllChildMarkers();
+          const price = markers[0].options.price || 0;
+          const markerColor = getHeatmapColor(price);
+          const displayValue = price < 1000 ? price.toString().padStart(3, '0') : price.toString().padStart(4, '0');
+          return L.divIcon({
+            html: `<div style="background-color: ${markerColor}; width: 40px; height: 40px; line-height: 40px; border-radius: 50%; font-size: 14px; font-weight: bold; color: #fff; text-align: center; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${displayValue}</div>`,
+            className: 'custom-marker',
+            iconSize: [40, 40]
+          });
         }
-
-        function searchSubRegion() {
-            const searchValue = document.getElementById('searchInput').value.toLowerCase();
-            map.eachLayer(layer => {
-                if (layer instanceof L.MarkerClusterGroup) {
-                    layer.eachLayer(marker => {
-                        const markerData = allMarkers.find(m => m.lat === marker.getLatLng().lat && m.lng === marker.getLatLng().lng);
-                        if (markerData && markerData.subRegion.toLowerCase().includes(searchValue)) {
-                            marker.openPopup();
-                            map.setView(marker.getLatLng(), 15);
-                        }
-                    });
-                }
-            });
+      }),
+      'Bergen': L.markerClusterGroup({
+        maxClusterRadius: 25,
+        iconCreateFunction: function(cluster) {
+          const markers = cluster.getAllChildMarkers();
+          const price = markers[0].options.price || 0;
+          const markerColor = getHeatmapColor(price);
+          const displayValue = price < 1000 ? price.toString().padStart(3, '0') : price.toString().padStart(4, '0');
+          return L.divIcon({
+            html: `<div style="background-color: ${markerColor}; width: 40px; height: 40px; line-height: 40px; border-radius: 50%; font-size: 14px; font-weight: bold; color: #fff; text-align: center; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${displayValue}</div>`,
+            className: 'custom-marker',
+            iconSize: [40, 40]
+          });
         }
-        toggleLayer('all');
-    </script>
+      }),
+      'Stavanger': L.markerClusterGroup({
+        maxClusterRadius: 25,
+        iconCreateFunction: function(cluster) {
+          const markers = cluster.getAllChildMarkers();
+          const price = markers[0].options.price || 0;
+          const markerColor = getHeatmapColor(price);
+          const displayValue = price < 1000 ? price.toString().padStart(3, '0') : price.toString().padStart(4, '0');
+          return L.divIcon({
+            html: `<div style="background-color: ${markerColor}; width: 40px; height: 40px; line-height: 40px; border-radius: 50%; font-size: 14px; font-weight: bold; color: #fff; text-align: center; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${displayValue}</div>`,
+            className: 'custom-marker',
+            iconSize: [40, 40]
+          });
+        }
+      }),
+      'Trondheim': L.markerClusterGroup({
+        maxClusterRadius: 25,
+        iconCreateFunction: function(cluster) {
+          const markers = cluster.getAllChildMarkers();
+          const price = markers[0].options.price || 0;
+          const markerColor = getHeatmapColor(price);
+          const displayValue = price < 1000 ? price.toString().padStart(3, '0') : price.toString().padStart(4, '0');
+          return L.divIcon({
+            html: `<div style="background-color: ${markerColor}; width: 40px; height: 40px; line-height: 40px; border-radius: 50%; font-size: 14px; font-weight: bold; color: #fff; text-align: center; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${displayValue}</div>`,
+            className: 'custom-marker',
+            iconSize: [40, 40]
+          });
+        }
+      }),
+      'Ski': L.markerClusterGroup({
+        maxClusterRadius: 25,
+        iconCreateFunction: function(cluster) {
+          const markers = cluster.getAllChildMarkers();
+          const price = markers[0].options.price || 0;
+          const markerColor = getHeatmapColor(price);
+          const displayValue = price < 1000 ? price.toString().padStart(3, '0') : price.toString().padStart(4, '0');
+          return L.divIcon({
+            html: `<div style="background-color: ${markerColor}; width: 40px; height: 40px; line-height: 40px; border-radius: 50%; font-size: 14px; font-weight: bold; color: #fff; text-align: center; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${displayValue}</div>`,
+            className: 'custom-marker',
+            iconSize: [40, 40]
+          });
+        }
+      })
+    };
+
+    let allMarkers = [];
+    let cachedData = null;
+
+    function parsePostcodeRange(postcodeStr) {
+      if (!postcodeStr) return null;
+      if (postcodeStr.includes('-')) {
+        const [start, end] = postcodeStr.split('-').map(num => parseInt(num.trim()));
+        return { start, end };
+      }
+      const single = parseInt(postcodeStr);
+      return { start: single, end: single };
+    }
+
+    function toggleLayer(sted) {
+      Object.keys(layers).forEach(key => {
+        layers[key].clearLayers();
+        document.querySelectorAll('.nav-bar a').forEach(a => a.classList.remove('active'));
+      });
+      document.querySelector(`.nav-bar a[onclick="toggleLayer('${sted}')"]`).classList.add('active');
+
+      if (cachedData) {
+        processData(cachedData, sted);
+        return;
+      }
+
+      Papa.parse('./merged_postcodes_complete.csv', {
+        download: true,
+        header: true,
+        complete: function(results) {
+          cachedData = results.data;
+          processData(cachedData, sted);
+        },
+        error: function(error) {
+          console.error('Error loading CSV:', error);
+          document.getElementById('errorMessage').textContent = 'Error loading merged_postcodes_complete.csv. Check file path.';
+          document.getElementById('errorMessage').style.display = 'block';
+          map.setView([64.0, 10.0], 5);
+        }
+      });
+    }
+
+    function processData(data, sted) {
+      const filteredData = data.filter(row =>
+        row.latitude && row.longitude &&
+        !isNaN(parseFloat(row.latitude)) && !isNaN(parseFloat(row.longitude)) &&
+        (sted === 'all' || row.Region === sted)
+      );
+
+      allMarkers = [];
+      document.getElementById('errorMessage').style.display = 'none';
+
+      if (sted === 'all') {
+        const uniqueCoords = new Set();
+        filteredData.forEach(row => uniqueCoords.add(`${parseFloat(row.latitude).toFixed(6)},${parseFloat(row.longitude).toFixed(6)}`));
+        uniqueCoords.forEach(coordKey => {
+          const [lat, lng] = coordKey.split(',').map(parseFloat);
+          const matchingRows = filteredData.filter(row =>
+            `${parseFloat(row.latitude).toFixed(6)},${parseFloat(row.longitude).toFixed(6)}` === coordKey
+          );
+          const primaryRegion = matchingRows[0].Region;
+          const isMissing = !matchingRows[0]['Sub Region'] || matchingRows[0]['Sub Region'] === '';
+          let markerColor = regionColors[primaryRegion] || '#000000';
+          if (isMissing) markerColor = '#FF00FF';
+          const displayValue = matchingRows.length > 1 ? matchingRows.length : '';
+          let popupContent = '<ul>';
+          matchingRows.forEach(row => {
+            popupContent += `<li>${row.Region}<br>Poststed: ${row['Sub Region'] || 'N/A'}<br>Postkode: ${row.Postnummer}<br>Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>Foreslått Autoringen Pris: ${row['Foreslått Autoringen Pris'] || 'N/A'}<br>Latitude: ${lat}<br>Longitude: ${lng}<br></li>`;
+            allMarkers.push({
+              lat: lat,
+              lng: lng,
+              subRegion: row['Sub Region'] || 'N/A',
+              postcode: row.Postnummer,
+              price: row['Foreslått Autoringen Pris'] || 'N/A'
+            });
+          });
+          popupContent += '</ul>';
+          layers['all'].addLayer(L.marker([lat, lng], {
+            title: `${matchingRows.length} zone${matchingRows.length > 1 ? 's' : ''}`,
+            icon: L.divIcon({
+              className: 'custom-marker',
+              html: `<div style="background-color: ${markerColor};">${displayValue}</div>`,
+              iconSize: [40, 40],
+              iconAnchor: [20, 40]
+            })
+          }).bindPopup(popupContent));
+        });
+      } else {
+        const XX_PIXELS = 50;
+        const groupedMarkers = [];
+        const markers = filteredData.map(row => {
+          const lat = parseFloat(row.latitude);
+          const lng = parseFloat(row.longitude);
+          const priceStr = row['Foreslått Autoringen Pris'] || '0';
+          const price = parseInt(priceStr.replace(/[^0-9]/g, '')) || 0;
+          return { lat, lng, price, row };
+        });
+
+        const processed = new Set();
+        markers.forEach((marker, i) => {
+          if (processed.has(i)) return;
+          processed.add(i);
+          const group = [marker];
+          const pointA = map.latLngToContainerPoint([marker.lat, marker.lng]);
+          markers.forEach((otherMarker, j) => {
+            if (i === j || processed.has(j)) return;
+            const pointB = map.latLngToContainerPoint([otherMarker.lat, otherMarker.lng]);
+            const distance = Math.sqrt(
+              Math.pow(pointA.x - pointB.x, 2) + Math.pow(pointA.y - pointB.y, 2)
+            );
+            if (distance <= XX_PIXELS && marker.price === otherMarker.price) {
+              group.push(otherMarker);
+              processed.add(j);
+            }
+          });
+          groupedMarkers.push(group);
+        });
+
+        groupedMarkers.forEach(group => {
+          if (group.length === 0) return;
+          const avgLat = group.reduce((sum, m) => sum + m.lat, 0) / group.length;
+          const avgLng = group.reduce((sum, m) => sum + m.lng, 0) / group.length;
+          const price = group[0].price;
+          const markerColor = getHeatmapColor(price);
+          const displayValue = price < 1000 ? price.toString().padStart(3, '0') : price.toString().padStart(4, '0');
+          let popupContent = '<ul>';
+          group.forEach(({ row }) => {
+            popupContent += `<li>${row.Region}<br>Poststed: ${row['Sub Region'] || 'N/A'}<br>Postkode: ${row.Postnummer}<br>Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>Foreslått Autoringen Pris: ${row['Foreslått Autoringen Pris'] || 'N/A'}<br>Latitude: ${avgLat}<br>Longitude: ${avgLng}<br></li>`;
+            allMarkers.push({
+              lat: avgLat,
+              lng: avgLng,
+              subRegion: row['Sub Region'] || 'N/A',
+              postcode: row.Postnummer,
+              price: row['Foreslått Autoringen Pris'] || 'N/A'
+            });
+          });
+          popupContent += '</ul>';
+          layers[sted].addLayer(L.marker([avgLat, avgLng], {
+            title: `Price: ${displayValue} NOK`,
+            price: price,
+            icon: L.divIcon({
+              className: 'custom-marker',
+              html: `<div style="background-color: ${markerColor};">${displayValue}</div>`,
+              iconSize: [40, 40],
+              iconAnchor: [20, 40]
+            })
+          }).bindPopup(popupContent));
+        });
+      }
+
+      map.eachLayer(layer => {
+        if (layer instanceof L.LayerGroup) map.removeLayer(layer);
+      });
+      map.addLayer(layers[sted]);
+
+      if (filteredData.length > 0) {
+        const bounds = L.latLngBounds([]);
+        filteredData.forEach(row => bounds.extend([parseFloat(row.latitude), parseFloat(row.longitude)]));
+        if (bounds.isValid()) map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+        else map.setView([64.0, 10.0], 5);
+      } else {
+        map.setView([64.0, 10.0], 5);
+      }
+      map.invalidateSize();
+    }
+
+    function searchPostcode() {
+      const searchValue = document.getElementById('searchInput').value.trim();
+      const searchNum = parseInt(searchValue);
+      const errorDiv = document.getElementById('errorMessage');
+      errorDiv.style.display = 'none';
+
+      if (!searchValue || isNaN(searchNum)) {
+        errorDiv.textContent = 'Vennligst skriv inn et gyldig postnummer';
+        errorDiv.style.display = 'block';
+        return;
+      }
+
+      let found = false;
+      const bounds = L.latLngBounds([]);
+      map.eachLayer(layer => {
+        if (layer instanceof L.MarkerClusterGroup) {
+          layer.eachLayer(marker => {
+            const markerData = allMarkers.find(m =>
+              m.lat === marker.getLatLng().lat && m.lng === marker.getLatLng().lng
+            );
+            if (markerData && markerData.postcode) {
+              const range = parsePostcodeRange(markerData.postcode);
+              if (range && searchNum >= range.start && searchNum <= range.end) {
+                found = true;
+                marker.openPopup();
+                map.setView(marker.getLatLng(), 15);
+                bounds.extend(marker.getLatLng());
+                errorDiv.textContent = `Foreslått Autoringen Pris: ${markerData.price} NOK`;
+                errorDiv.style.color = '#333';
+                errorDiv.style.display = 'block';
+              }
+            }
+          });
+        }
+      });
+
+      if (!found) {
+        errorDiv.textContent = 'Utenfor Gire sone';
+        errorDiv.style.color = 'red';
+        errorDiv.style.display = 'block';
+        map.setView([64.0, 10.0], 5);
+      } else if (bounds.isValid()) {
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+      }
+    }
+
+    map.on('zoomend', () => {
+      const activeLayer = document.querySelector('.nav-bar a.active').getAttribute('onclick').match(/'([^']+)'/)[1];
+      if (activeLayer !== 'all') {
+        toggleLayer(activeLayer);
+      }
+    });
+
+    toggleLayer('all');
+  </script>
 </body>
 </html>
