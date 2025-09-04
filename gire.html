@@ -40,7 +40,7 @@
       margin: 10px auto;
       text-align: center;
     }
-    .nav-bar a {
+    .nav-bar button {
       display: inline-block;
       color: #fff;
       text-decoration: none;
@@ -49,19 +49,21 @@
       border-radius: 5px;
       font-weight: 700;
       transition: background-color 0.3s, transform 0.2s;
+      border: none;
+      cursor: pointer;
     }
-    .nav-bar a:hover {
+    .nav-bar button:hover {
       transform: scale(1.05);
     }
-    .nav-bar a.active {
+    .nav-bar button.active {
       filter: brightness(1.2);
     }
-    .nav-bar a.all { background: #666; }
-    .nav-bar a.skedsmo { background: #1d4877; }
-    .nav-bar a.bergen { background: #1b8a5a; }
-    .nav-bar a.stavanger { background: #fbb021; }
-    .nav-bar a.trondheim { background: #f68838; }
-    .nav-bar a.ski { background: #ee3e32; }
+    .nav-bar button.all { background: #666; }
+    .nav-bar button.skedsmo { background: #1d4877; }
+    .nav-bar button.bergen { background: #1b8a5a; }
+    .nav-bar button.stavanger { background: #fbb021; }
+    .nav-bar button.trondheim { background: #f68838; }
+    .nav-bar button.ski { background: #ee3e32; }
     .map-container {
       max-width: 1200px;
       margin: 20px auto;
@@ -93,7 +95,6 @@
     }
     .error-message {
       text-align: center;
-      color: red;
       padding: 10px;
       display: none;
     }
@@ -139,8 +140,49 @@
     .search-container input:focus {
       color: #003087;
     }
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      border: 0;
+    }
+    .loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.8);
+      padding: 10px;
+      border-radius: 5px;
+      display: none;
+    }
+    .legend {
+      position: absolute;
+      bottom: 80px;
+      right: 20px;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 10px;
+      border-radius: 5px;
+      z-index: 1000;
+    }
+    .legend h4 {
+      margin: 0 0 5px;
+      font-size: 14px;
+    }
+    .legend span {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      margin-right: 5px;
+      vertical-align: middle;
+    }
     @media (max-width: 600px) {
-      .nav-bar a {
+      .nav-bar button {
         display: block;
         margin: 5px auto;
         width: 80%;
@@ -171,6 +213,14 @@
         font-size: 12px;
         width: 140px;
       }
+      .legend {
+        bottom: 70px;
+        right: 10px;
+        padding: 5px;
+      }
+      .legend h4 {
+        font-size: 12px;
+      }
     }
   </style>
 </head>
@@ -180,19 +230,26 @@
     <h1>Forslag til Gire Soner</h1>
   </header>
   <div class="nav-bar">
-    <a href="javascript:void(0)" onclick="toggleLayer('all')" class="all active">Alle</a>
-    <a href="javascript:void(0)" onclick="toggleLayer('Skedsmo')" class="skedsmo">Skedsmo</a>
-    <a href="javascript:void(0)" onclick="toggleLayer('Bergen')" class="bergen">Bergen</a>
-    <a href="javascript:void(0)" onclick="toggleLayer('Stavanger')" class="stavanger">Stavanger</a>
-    <a href="javascript:void(0)" onclick="toggleLayer('Trondheim')" class="trondheim">Trondheim</a>
-    <a href="javascript:void(0)" onclick="toggleLayer('Ski')" class="ski">Ski</a>
+    <button onclick="toggleLayer('all')" class="all active">Alle</button>
+    <button onclick="toggleLayer('Skedsmo')" class="skedsmo">Skedsmo</button>
+    <button onclick="toggleLayer('Bergen')" class="bergen">Bergen</button>
+    <button onclick="toggleLayer('Stavanger')" class="stavanger">Stavanger</button>
+    <button onclick="toggleLayer('Trondheim')" class="trondheim">Trondheim</button>
+    <button onclick="toggleLayer('Ski')" class="ski">Ski</button>
   </div>
   <div class="map-container">
     <div id="map"></div>
     <div class="map-attribution">Powered by OpenStreetMap | Autoringen | Postnummerdata frå Erik Bolstad</div>
     <div class="search-container">
+      <label for="searchInput" class="visually-hidden">Søk postnummer</label>
       <input type="text" id="searchInput" placeholder="Søk postnummer" onkeyup="searchPostcode()">
     </div>
+    <div class="legend" id="legend">
+      <h4>Price Legend</h4>
+      <div><span id="minPriceColor"></span><span id="minPriceLabel">Loading...</span></div>
+      <div><span id="maxPriceColor"></span><span id="maxPriceLabel">Loading...</span></div>
+    </div>
+    <div class="loading" id="loading">Loading...</div>
   </div>
   <div class="error-message" id="errorMessage"></div>
   <footer></footer>
@@ -213,8 +270,17 @@
       'Ski': '#ee3e32'
     };
 
-    const minPrice = 580;
-    const maxPrice = 1090;
+    const regionCenters = {
+      'all': [64.0, 10.0],
+      'Skedsmo': [59.95, 11.05],
+      'Bergen': [60.39, 5.32],
+      'Stavanger': [58.97, 5.73],
+      'Trondheim': [63.43, 10.39],
+      'Ski': [59.72, 10.83]
+    };
+
+    let minPrice = 580;
+    let maxPrice = 1090;
 
     function getHeatmapColor(price) {
       const ratio = (price - minPrice) / (maxPrice - minPrice);
@@ -309,11 +375,12 @@
     }
 
     function toggleLayer(sted) {
+      document.getElementById('loading').style.display = 'block';
       Object.keys(layers).forEach(key => {
         layers[key].clearLayers();
-        document.querySelectorAll('.nav-bar a').forEach(a => a.classList.remove('active'));
+        document.querySelectorAll('.nav-bar button').forEach(btn => btn.classList.remove('active'));
       });
-      document.querySelector(`.nav-bar a[onclick="toggleLayer('${sted}')"]`).classList.add('active');
+      document.querySelector(`.nav-bar button[onclick="toggleLayer('${sted}')"]`).classList.add('active');
 
       if (cachedData) {
         processData(cachedData, sted);
@@ -325,13 +392,24 @@
         header: true,
         complete: function(results) {
           cachedData = results.data;
+          const prices = cachedData
+            .map(row => parseInt(row['Foreslått Autoringen Pris']?.replace(/[^0-9]/g, '') || 0))
+            .filter(price => !isNaN(price));
+          minPrice = prices.length > 0 ? Math.min(...prices) : 580;
+          maxPrice = prices.length > 0 ? Math.max(...prices) : 1090;
+          document.getElementById('minPriceColor').style.backgroundColor = getHeatmapColor(minPrice);
+          document.getElementById('minPriceLabel').textContent = `${minPrice} NOK`;
+          document.getElementById('maxPriceColor').style.backgroundColor = getHeatmapColor(maxPrice);
+          document.getElementById('maxPriceLabel').textContent = `${maxPrice} NOK`;
           processData(cachedData, sted);
         },
         error: function(error) {
           console.error('Error loading CSV:', error);
-          document.getElementById('errorMessage').textContent = 'Error loading merged_postcodes_complete.csv. Check file path.';
+          document.getElementById('errorMessage').textContent = 'Kunne ikke laste postnummerdata. Vennligst sjekk filtilgangen eller prøv igjen senere.';
+          document.getElementById('errorMessage').style.color = 'red';
           document.getElementById('errorMessage').style.display = 'block';
-          map.setView([64.0, 10.0], 5);
+          document.getElementById('loading').style.display = 'none';
+          map.setView(regionCenters[sted], 10);
         }
       });
     }
@@ -382,7 +460,7 @@
           }).bindPopup(popupContent));
         });
       } else {
-        const XX_PIXELS = 50;
+        const XX_PIXELS = map.getZoom() > 10 ? 30 : 50;
         const groupedMarkers = [];
         const markers = filteredData.map(row => {
           const lat = parseFloat(row.latitude);
@@ -453,61 +531,67 @@
         const bounds = L.latLngBounds([]);
         filteredData.forEach(row => bounds.extend([parseFloat(row.latitude), parseFloat(row.longitude)]));
         if (bounds.isValid()) map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
-        else map.setView([64.0, 10.0], 5);
+        else map.setView(regionCenters[sted], 10);
       } else {
-        map.setView([64.0, 10.0], 5);
+        map.setView(regionCenters[sted], 10);
       }
       map.invalidateSize();
+      document.getElementById('loading').style.display = 'none';
     }
 
+    let searchTimeout;
     function searchPostcode() {
-      const searchValue = document.getElementById('searchInput').value.trim();
-      const searchNum = parseInt(searchValue);
-      const errorDiv = document.getElementById('errorMessage');
-      errorDiv.style.display = 'none';
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        const searchValue = document.getElementById('searchInput').value.trim();
+        const searchNum = parseInt(searchValue);
+        const errorDiv = document.getElementById('errorMessage');
+        errorDiv.style.display = 'none';
 
-      if (!searchValue || isNaN(searchNum)) {
-        errorDiv.textContent = 'Vennligst skriv inn et gyldig postnummer';
-        errorDiv.style.display = 'block';
-        return;
-      }
-
-      let found = false;
-      const bounds = L.latLngBounds([]);
-      map.eachLayer(layer => {
-        if (layer instanceof L.MarkerClusterGroup) {
-          layer.eachLayer(marker => {
-            const markerData = allMarkers.find(m =>
-              m.lat === marker.getLatLng().lat && m.lng === marker.getLatLng().lng
-            );
-            if (markerData && markerData.postcode) {
-              const range = parsePostcodeRange(markerData.postcode);
-              if (range && searchNum >= range.start && searchNum <= range.end) {
-                found = true;
-                marker.openPopup();
-                map.setView(marker.getLatLng(), 15);
-                bounds.extend(marker.getLatLng());
-                errorDiv.textContent = `Foreslått Autoringen Pris: ${markerData.price} NOK`;
-                errorDiv.style.color = '#333';
-                errorDiv.style.display = 'block';
-              }
-            }
-          });
+        if (!searchValue || isNaN(searchNum)) {
+          errorDiv.textContent = 'Vennligst skriv inn et gyldig postnummer';
+          errorDiv.style.color = 'red';
+          errorDiv.style.display = 'block';
+          return;
         }
-      });
 
-      if (!found) {
-        errorDiv.textContent = 'Utenfor Gire sone';
-        errorDiv.style.color = 'red';
-        errorDiv.style.display = 'block';
-        map.setView([64.0, 10.0], 5);
-      } else if (bounds.isValid()) {
-        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
-      }
+        let found = false;
+        const bounds = L.latLngBounds([]);
+        map.eachLayer(layer => {
+          if (layer instanceof L.MarkerClusterGroup) {
+            layer.eachLayer(marker => {
+              const markerData = allMarkers.find(m =>
+                m.lat === marker.getLatLng().lat && m.lng === marker.getLatLng().lng
+              );
+              if (markerData && markerData.postcode) {
+                const range = parsePostcodeRange(markerData.postcode);
+                if (range && searchNum >= range.start && searchNum <= range.end) {
+                  found = true;
+                  marker.openPopup();
+                  map.setView(marker.getLatLng(), 15);
+                  bounds.extend(marker.getLatLng());
+                  errorDiv.textContent = `Foreslått Autoringen Pris: ${markerData.price} NOK`;
+                  errorDiv.style.color = '#333';
+                  errorDiv.style.display = 'block';
+                }
+              }
+            });
+          }
+        });
+
+        if (!found) {
+          errorDiv.textContent = 'Utenfor Gire sone';
+          errorDiv.style.color = 'red';
+          errorDiv.style.display = 'block';
+          map.setView(regionCenters['all'], 5);
+        } else if (bounds.isValid()) {
+          map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+        }
+      }, 300);
     }
 
     map.on('zoomend', () => {
-      const activeLayer = document.querySelector('.nav-bar a.active').getAttribute('onclick').match(/'([^']+)'/)[1];
+      const activeLayer = document.querySelector('.nav-bar button.active').getAttribute('onclick').match(/'([^']+)'/)[1];
       if (activeLayer !== 'all') {
         toggleLayer(activeLayer);
       }
