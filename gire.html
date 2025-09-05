@@ -250,10 +250,9 @@
       return `hsl(${(1 - ratio) * 240}, 70%, 50%)`;
     }
     const layers = {
-      'all': L.markerClusterGroup({ maxClusterRadius: 20, disableClusteringAtZoom: 18 }),
+      'all': L.markerClusterGroup({ maxClusterRadius: 20 }),
       'Skedsmo': L.markerClusterGroup({
         maxClusterRadius: 20,
-        disableClusteringAtZoom: 18,
         iconCreateFunction: function(cluster) {
           const markers = cluster.getAllChildMarkers();
           const price = markers[0].options.price || 0;
@@ -268,7 +267,6 @@
       }),
       'Bergen': L.markerClusterGroup({
         maxClusterRadius: 20,
-        disableClusteringAtZoom: 18,
         iconCreateFunction: function(cluster) {
           const markers = cluster.getAllChildMarkers();
           const price = markers[0].options.price || 0;
@@ -283,7 +281,6 @@
       }),
       'Stavanger': L.markerClusterGroup({
         maxClusterRadius: 20,
-        disableClusteringAtZoom: 18,
         iconCreateFunction: function(cluster) {
           const markers = cluster.getAllChildMarkers();
           const price = markers[0].options.price || 0;
@@ -298,7 +295,6 @@
       }),
       'Trondheim': L.markerClusterGroup({
         maxClusterRadius: 20,
-        disableClusteringAtZoom: 18,
         iconCreateFunction: function(cluster) {
           const markers = cluster.getAllChildMarkers();
           const price = markers[0].options.price || 0;
@@ -313,7 +309,6 @@
       }),
       'Ski': L.markerClusterGroup({
         maxClusterRadius: 20,
-        disableClusteringAtZoom: 18,
         iconCreateFunction: function(cluster) {
           const markers = cluster.getAllChildMarkers();
           const price = markers[0].options.price || 0;
@@ -434,7 +429,7 @@
             if (isValidCoordinate(lat, lng)) {
               map.panTo([lat, lng]);
             } else {
-              console.warn(`Marker click ignored due to invalid coordinates: lat=${lat}, lng=${lng}`);
+              console.warn(`Marker click ignored: invalid coordinates lat=${lat}, lng=${lng}`);
             }
           });
           layers['all'].addLayer(marker);
@@ -505,7 +500,7 @@
             if (isValidCoordinate(avgLat, avgLng)) {
               map.panTo([avgLat, avgLng]);
             } else {
-              console.warn(`Marker click ignored due to invalid coordinates: lat=${avgLat}, lng=${avgLng}`);
+              console.warn(`Marker click ignored: invalid coordinates lat=${avgLat}, lng=${avgLng}`);
             }
           });
           layers[sted].addLayer(marker);
@@ -552,8 +547,7 @@
           return;
         }
         console.log(`Searching for postcode: ${searchNum}`);
-        let found = false;
-        const bounds = L.latLngBounds([]);
+        const matchingMarkers = [];
         map.eachLayer(layer => {
           if (layer instanceof L.MarkerClusterGroup) {
             layer.eachLayer(marker => {
@@ -563,15 +557,8 @@
               if (markerData && markerData.postcode) {
                 const range = parsePostcodeRange(markerData.postcode);
                 if (range && searchNum >= range.start && searchNum <= range.end) {
-                  found = true;
-                  console.log(`Found marker: lat=${markerData.lat}, lng=${markerData.lng}, postcode=${markerData.postcode}`);
                   if (isValidCoordinate(markerData.lat, markerData.lng)) {
-                    marker.openPopup();
-                    map.setView([markerData.lat, markerData.lng], 18);
-                    bounds.extend([markerData.lat, markerData.lng]);
-                    errorDiv.textContent = `Foreslått Autoringen Pris: ${markerData.price} NOK`;
-                    errorDiv.style.color = '#333';
-                    errorDiv.style.display = 'block';
+                    matchingMarkers.push({ marker, markerData });
                   } else {
                     console.warn(`Invalid coordinates for postcode ${searchNum}: lat=${markerData.lat}, lng=${markerData.lng}`);
                   }
@@ -580,14 +567,30 @@
             });
           }
         });
-        if (!found) {
+        if (matchingMarkers.length > 0) {
+          const bounds = L.latLngBounds([]);
+          let priceInfo = '';
+          matchingMarkers.forEach(({ marker, markerData }) => {
+            bounds.extend([markerData.lat, markerData.lng]);
+            marker.openPopup();
+            priceInfo += `Postnummer ${markerData.postcode}: Foreslått Autoringen Pris: ${markerData.price} NOK<br>`;
+          });
+          console.log(`Found ${matchingMarkers.length} markers for postcode ${searchNum}`);
+          errorDiv.innerHTML = priceInfo;
+          errorDiv.style.color = '#333';
+          errorDiv.style.display = 'block';
+          if (bounds.isValid()) {
+            map.fitBounds(bounds, { padding: [50, 50], maxZoom: 18 });
+          } else {
+            console.warn(`Invalid bounds for postcode ${searchNum}`);
+            map.setView(regionCenters['all'], 5);
+          }
+        } else {
           console.warn(`Postcode ${searchNum} not found`);
           errorDiv.textContent = 'Utenfor Gire sone';
           errorDiv.style.color = 'red';
           errorDiv.style.display = 'block';
           map.setView(regionCenters['all'], 5);
-        } else if (bounds.isValid()) {
-          map.fitBounds(bounds, { padding: [50, 50], maxZoom: 18 });
         }
       }, 300);
     }
