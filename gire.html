@@ -224,7 +224,9 @@
   <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script>
-    const map = L.map('map', { minZoom: 5, maxZoom: 18 });
+    const map = L.map('map', informuje
+
+System: { minZoom: 5, maxZoom: 18 });
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
     }).addTo(map);
@@ -406,7 +408,8 @@
           const displayValue = matchingRows.length > 1 ? matchingRows.length : '';
           let popupContent = '<ul>';
           matchingRows.forEach(row => {
-            popupContent += `<li>${row.Region}<br>Poststed: ${row['Sub Region'] || 'N/A'}<br>Postkode: ${row.Postnummer}<br>Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>Foreslått Autoringen Pris: ${row['Foreslått Autoringen Pris'] || 'N/A'}<br>Latitude: ${lat}<br>Longitude: ${lng}<br></li>`;
+            const postcode = row.Postnummer;
+            popupContent += `<li>Postkode: ${postcode}</li>`;
             allMarkers.push({
               lat: lat,
               lng: lng,
@@ -476,7 +479,8 @@
           const displayValue = price < 1000 ? price.toString().padStart(3, '0') : price.toString().padStart(4, '0');
           let popupContent = '<ul>';
           group.forEach(({ row }) => {
-            popupContent += `<li>${row.Region}<br>Poststed: ${row['Sub Region'] || 'N/A'}<br>Postkode: ${row.Postnummer}<br>Autoringen Price: ${row['Priser Autoringen'] || 'N/A'}<br>Foreslått Autoringen Pris: ${row['Foreslått Autoringen Pris'] || 'N/A'}<br>Latitude: ${avgLat}<br>Longitude: ${avgLng}<br></li>`;
+            const postcode = row.Postnummer;
+            popupContent += `<li>Postkode: ${postcode}</li>`;
             allMarkers.push({
               lat: avgLat,
               lng: avgLng,
@@ -599,7 +603,7 @@
     });
     map.on('zoomend', () => {
       const activeLayer = document.querySelector('.nav-bar button.active').getAttribute('onclick').match(/'([^']+)'/)[1];
-      if (isManualZoom && activeLayer !== 'all' && map.getZoom() <= 10) {
+      if (isManualZoom && activeLayer !== 'all' && map.getZoom() <= 5) {
         console.log(`Zoomend triggered for ${activeLayer} at zoom ${map.getZoom()}`);
         toggleLayer(activeLayer);
       }
