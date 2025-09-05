@@ -250,9 +250,10 @@
       return `hsl(${(1 - ratio) * 240}, 70%, 50%)`;
     }
     const layers = {
-      'all': L.markerClusterGroup({ maxClusterRadius: 20 }),
+      'all': L.markerClusterGroup({ maxClusterRadius: 20, disableClusteringAtZoom: 18 }),
       'Skedsmo': L.markerClusterGroup({
         maxClusterRadius: 20,
+        disableClusteringAtZoom: 18,
         iconCreateFunction: function(cluster) {
           const markers = cluster.getAllChildMarkers();
           const price = markers[0].options.price || 0;
@@ -267,6 +268,7 @@
       }),
       'Bergen': L.markerClusterGroup({
         maxClusterRadius: 20,
+        disableClusteringAtZoom: 18,
         iconCreateFunction: function(cluster) {
           const markers = cluster.getAllChildMarkers();
           const price = markers[0].options.price || 0;
@@ -281,6 +283,7 @@
       }),
       'Stavanger': L.markerClusterGroup({
         maxClusterRadius: 20,
+        disableClusteringAtZoom: 18,
         iconCreateFunction: function(cluster) {
           const markers = cluster.getAllChildMarkers();
           const price = markers[0].options.price || 0;
@@ -295,6 +298,7 @@
       }),
       'Trondheim': L.markerClusterGroup({
         maxClusterRadius: 20,
+        disableClusteringAtZoom: 18,
         iconCreateFunction: function(cluster) {
           const markers = cluster.getAllChildMarkers();
           const price = markers[0].options.price || 0;
@@ -309,6 +313,7 @@
       }),
       'Ski': L.markerClusterGroup({
         maxClusterRadius: 20,
+        disableClusteringAtZoom: 18,
         iconCreateFunction: function(cluster) {
           const markers = cluster.getAllChildMarkers();
           const price = markers[0].options.price || 0;
@@ -324,14 +329,26 @@
     };
     let allMarkers = [];
     let cachedData = null;
+    let isManualZoom = false;
     function parsePostcodeRange(postcodeStr) {
       if (!postcodeStr) return null;
-      if (postcodeStr.includes('-')) {
-        const [start, end] = postcodeStr.split('-').map(num => parseInt(num.trim()));
+      const cleaned = postcodeStr.toString().trim();
+      if (cleaned.includes('-')) {
+        const [start, end] = cleaned.split('-').map(num => parseInt(num.trim()));
+        if (isNaN(start) || isNaN(end)) return null;
         return { start, end };
       }
-      const single = parseInt(postcodeStr);
-      return { start: single, end: single };
+      const single = parseInt(cleaned);
+      return isNaN(single) ? null : { start: single, end: single };
+    }
+    function isValidCoordinate(lat, lng) {
+      // Norway bounds: latitude 57–71, longitude 4–31
+      return (
+        lat !== null && lng !== null &&
+        !isNaN(lat) && !isNaN(lng) &&
+        lat >= 57 && lat <= 71 &&
+        lng >= 4 && lng <= 31
+      );
     }
     function toggleLayer(sted) {
       document.getElementById('loading').style.display = 'block';
@@ -367,11 +384,15 @@
       });
     }
     function processData(data, sted) {
-      const filteredData = data.filter(row =>
-        row.latitude && row.longitude &&
-        !isNaN(parseFloat(row.latitude)) && !isNaN(parseFloat(row.longitude)) &&
-        (sted === 'all' || row.Region === sted)
-      );
+      const filteredData = data.filter(row => {
+        const lat = parseFloat(row.latitude);
+        const lng = parseFloat(row.longitude);
+        const isValid = isValidCoordinate(lat, lng);
+        if (!isValid) {
+          console.warn(`Invalid coordinates skipped: lat=${lat}, lng=${lng}, Region=${row.Region}, Postnummer=${row.Postnummer}`);
+        }
+        return isValid && (sted === 'all' || row.Region === sted);
+      });
       allMarkers = [];
       document.getElementById('errorMessage').style.display = 'none';
       if (sted === 'all') {
@@ -379,6 +400,7 @@
         filteredData.forEach(row => uniqueCoords.add(`${parseFloat(row.latitude).toFixed(6)},${parseFloat(row.longitude).toFixed(6)}`));
         uniqueCoords.forEach(coordKey => {
           const [lat, lng] = coordKey.split(',').map(parseFloat);
+          if (!isValidCoordinate(lat, lng)) return;
           const matchingRows = filteredData.filter(row =>
             `${parseFloat(row.latitude).toFixed(6)},${parseFloat(row.longitude).toFixed(6)}` === coordKey
           );
@@ -399,7 +421,7 @@
             });
           });
           popupContent += '</ul>';
-          layers['all'].addLayer(L.marker([lat, lng], {
+          const marker = L.marker([lat, lng], {
             title: `${matchingRows.length} zone${matchingRows.length > 1 ? 's' : ''}`,
             icon: L.divIcon({
               className: 'custom-marker',
@@ -407,7 +429,15 @@
               iconSize: [40, 40],
               iconAnchor: [20, 40]
             })
-          }).bindPopup(popupContent));
+          }).bindPopup(popupContent);
+          marker.on('click', () => {
+            if (isValidCoordinate(lat, lng)) {
+              map.panTo([lat, lng]);
+            } else {
+              console.warn(`Marker click ignored due to invalid coordinates: lat=${lat}, lng=${lng}`);
+            }
+          });
+          layers['all'].addLayer(marker);
         });
       } else {
         const XX_PIXELS = map.getZoom() > 10 ? 30 : 50;
@@ -442,6 +472,10 @@
           if (group.length === 0) return;
           const avgLat = group.reduce((sum, m) => sum + m.lat, 0) / group.length;
           const avgLng = group.reduce((sum, m) => sum + m.lng, 0) / group.length;
+          if (!isValidCoordinate(avgLat, avgLng)) {
+            console.warn(`Invalid group coordinates skipped: lat=${avgLat}, lng=${avgLng}`);
+            return;
+          }
           const price = group[0].price;
           const markerColor = getHeatmapColor(price);
           const displayValue = price < 1000 ? price.toString().padStart(3, '0') : price.toString().padStart(4, '0');
@@ -457,7 +491,7 @@
             });
           });
           popupContent += '</ul>';
-          layers[sted].addLayer(L.marker([avgLat, avgLng], {
+          const marker = L.marker([avgLat, avgLng], {
             title: `Price: ${displayValue} NOK`,
             price: price,
             icon: L.divIcon({
@@ -466,7 +500,15 @@
               iconSize: [40, 40],
               iconAnchor: [20, 40]
             })
-          }).bindPopup(popupContent));
+          }).bindPopup(popupContent);
+          marker.on('click', () => {
+            if (isValidCoordinate(avgLat, avgLng)) {
+              map.panTo([avgLat, avgLng]);
+            } else {
+              console.warn(`Marker click ignored due to invalid coordinates: lat=${avgLat}, lng=${avgLng}`);
+            }
+          });
+          layers[sted].addLayer(marker);
         });
       }
       map.eachLayer(layer => {
@@ -475,10 +517,21 @@
       map.addLayer(layers[sted]);
       if (filteredData.length > 0) {
         const bounds = L.latLngBounds([]);
-        filteredData.forEach(row => bounds.extend([parseFloat(row.latitude), parseFloat(row.longitude)]));
-        if (bounds.isValid()) map.fitBounds(bounds, { padding: [50, 50], maxZoom: 18 });
-        else map.setView(regionCenters[sted], 10);
+        filteredData.forEach(row => {
+          const lat = parseFloat(row.latitude);
+          const lng = parseFloat(row.longitude);
+          if (isValidCoordinate(lat, lng)) {
+            bounds.extend([lat, lng]);
+          }
+        });
+        if (bounds.isValid()) {
+          map.fitBounds(bounds, { padding: [50, 50], maxZoom: 18 });
+        } else {
+          console.warn(`No valid bounds for ${sted}, setting default view`);
+          map.setView(regionCenters[sted], 10);
+        }
       } else {
+        console.warn(`No valid data for ${sted}, setting default view`);
         map.setView(regionCenters[sted], 10);
       }
       map.invalidateSize();
@@ -498,6 +551,7 @@
           errorDiv.style.display = 'block';
           return;
         }
+        console.log(`Searching for postcode: ${searchNum}`);
         let found = false;
         const bounds = L.latLngBounds([]);
         map.eachLayer(layer => {
@@ -510,18 +564,24 @@
                 const range = parsePostcodeRange(markerData.postcode);
                 if (range && searchNum >= range.start && searchNum <= range.end) {
                   found = true;
-                  marker.openPopup();
-                  map.setView(marker.getLatLng(), 18);
-                  bounds.extend(marker.getLatLng());
-                  errorDiv.textContent = `Foreslått Autoringen Pris: ${markerData.price} NOK`;
-                  errorDiv.style.color = '#333';
-                  errorDiv.style.display = 'block';
+                  console.log(`Found marker: lat=${markerData.lat}, lng=${markerData.lng}, postcode=${markerData.postcode}`);
+                  if (isValidCoordinate(markerData.lat, markerData.lng)) {
+                    marker.openPopup();
+                    map.setView([markerData.lat, markerData.lng], 18);
+                    bounds.extend([markerData.lat, markerData.lng]);
+                    errorDiv.textContent = `Foreslått Autoringen Pris: ${markerData.price} NOK`;
+                    errorDiv.style.color = '#333';
+                    errorDiv.style.display = 'block';
+                  } else {
+                    console.warn(`Invalid coordinates for postcode ${searchNum}: lat=${markerData.lat}, lng=${markerData.lng}`);
+                  }
                 }
               }
             });
           }
         });
         if (!found) {
+          console.warn(`Postcode ${searchNum} not found`);
           errorDiv.textContent = 'Utenfor Gire sone';
           errorDiv.style.color = 'red';
           errorDiv.style.display = 'block';
@@ -531,11 +591,16 @@
         }
       }, 300);
     }
+    map.on('zoomstart', () => {
+      isManualZoom = true;
+    });
     map.on('zoomend', () => {
       const activeLayer = document.querySelector('.nav-bar button.active').getAttribute('onclick').match(/'([^']+)'/)[1];
-      if (activeLayer !== 'all' && map.getZoom() <= 15) {
+      if (isManualZoom && activeLayer !== 'all' && map.getZoom() <= 10) {
+        console.log(`Zoomend triggered for ${activeLayer} at zoom ${map.getZoom()}`);
         toggleLayer(activeLayer);
       }
+      isManualZoom = false;
     });
     toggleLayer('all');
   </script>
